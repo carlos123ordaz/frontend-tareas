@@ -261,7 +261,6 @@ export const TimerPage = () => {
         if (!window.confirm('¿Estás seguro de eliminar esta tarea? No podrás recuperarla.')) {
             return;
         }
-
         try {
             const response = await fetch(`${CONFIG.uri}/tasks/${taskId}`, {
                 method: 'DELETE'

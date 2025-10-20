@@ -10,6 +10,7 @@ export const LoginPage = () => {
         username: '',
         password: ''
     });
+
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
