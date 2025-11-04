@@ -51,7 +51,6 @@ export const LoginPage = () => {
             const data = await response.json();
             if (response.ok) {
                 localStorage.setItem('token', data.token);
-                localStorage.setItem('username', formData.username);
                 navigate('/');
             } else {
                 setError(data.msg || 'Credenciales inválidas');

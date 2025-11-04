@@ -20,26 +20,35 @@ import {
     Menu as MenuIcon,
     Brightness4,
     Brightness7,
+    ControlPoint,
 } from '@mui/icons-material';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
+import { AuthContext } from '../contexts/AuthContext';
+import axios from 'axios';
+import { CONFIG } from '../config';
 
 const drawerWidth = 240;
 
 export default function MainLayout() {
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [username, setUsername] = useState('');
     const { mode, toggleTheme } = useContext(ThemeContext);
-
+    const { setUser, user } = useContext(AuthContext);
+    const getUser = (userId) => {
+        axios.get(`${CONFIG.uri}/users/${userId}`).then((res) => {
+            setUser(res.data);
+        }).catch((err) => {
+            navigate('/login');
+            console.log(err);
+        })
+    }
     useEffect(() => {
-        const storedUsername = localStorage.getItem('username');
         const token = localStorage.getItem('token');
-
-        if (!token || !storedUsername) {
+        if (!token) {
             navigate('/login');
         } else {
-            setUsername(storedUsername);
+            getUser(token);
         }
     }, [navigate]);
 
@@ -49,7 +58,6 @@ export default function MainLayout() {
 
     const handleLogout = () => {
         localStorage.removeItem('token');
-        localStorage.removeItem('username');
         navigate('/login');
     };
 
@@ -59,6 +67,11 @@ export default function MainLayout() {
         { texto: 'Reportes', icono: <Assessment />, ruta: '/reportes' },
     ];
 
+    useEffect(() => {
+        if (user && user.esLider) {
+            menuItems.push({ texto: 'Control', icono: <ControlPoint />, ruta: '/team-dashboard' });
+        }
+    }, [user])
     const drawer = (
         <Box>
             <Box sx={{
@@ -157,11 +170,11 @@ export default function MainLayout() {
                     </IconButton>
 
                     <Typography variant="body2" sx={{ mr: 2, color: 'text.secondary' }}>
-                        {username}
+                        {user && user.username}
                     </Typography>
 
                     <Avatar sx={{ bgcolor: '#03a9f4', width: 32, height: 32, fontSize: '0.875rem' }}>
-                        {username.charAt(0).toUpperCase()}
+                        {user && user.username.charAt(0).toUpperCase()}
                     </Avatar>
                 </Toolbar>
             </AppBar>

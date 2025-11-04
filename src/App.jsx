@@ -5,6 +5,7 @@ import MainLayout from "./layouts/MainLayout";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ReportPage } from "./pages/ReportPage";
+import { TeamDashboard } from "./pages/TeamDashboard";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="timer" element={<TimerPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="reportes" element={<ReportPage />} />
+        <Route path="team-dashboard" element={<TeamDashboard />} />
       </Route>
     </Routes>
   );

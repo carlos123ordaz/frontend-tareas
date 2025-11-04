@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
     Box,
     Paper,
@@ -26,6 +26,9 @@ import {
     ListItem,
     ListItemText,
     Divider,
+    Collapse,
+    Card,
+    CardContent,
 } from '@mui/material';
 import {
     PlayArrow,
@@ -37,8 +40,14 @@ import {
     Add,
     Settings,
     Close,
+    Edit,
+    Send,
+    ExpandMore,
+    ExpandLess,
+    Description as DescriptionIcon,
 } from '@mui/icons-material';
 import { CONFIG } from '../config';
+import { AuthContext } from '../contexts/AuthContext';
 
 export const TimerPage = () => {
     const [tareasDisponibles, setTareasDisponibles] = useState([]);
@@ -51,8 +60,11 @@ export const TimerPage = () => {
     const [dialogTarea, setDialogTarea] = useState(false);
     const [dialogGestionTareas, setDialogGestionTareas] = useState(false);
     const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', color: '#607D8B' });
+    const [nuevaDescripcion, setNuevaDescripcion] = useState('');
+    const [expandedEntries, setExpandedEntries] = useState({});
     const userId = localStorage.getItem('token');
     const fechaHoy = new Date().toISOString().split('T')[0];
+    const { user } = useContext(AuthContext);
 
     useEffect(() => {
         cargarTareas();
@@ -93,7 +105,7 @@ export const TimerPage = () => {
 
     const cargarTareas = async () => {
         try {
-            const response = await fetch(`${CONFIG.uri}/tasks/user/${userId}`);
+            const response = await fetch(`${CONFIG.uri}/tasks`);
             if (response.ok) {
                 const data = await response.json();
                 setTareasDisponibles(data);
@@ -152,13 +164,15 @@ export const TimerPage = () => {
                 body: JSON.stringify({
                     userId,
                     taskId: tareaSeleccionada,
-                    fecha: fechaHoy
+                    fecha: fechaHoy,
+                    descripcion: nuevaDescripcion
                 })
             });
 
             if (response.ok) {
                 const data = await response.json();
                 setEntradaActiva(data.entry);
+                setNuevaDescripcion('');
                 await cargarHistorial();
             } else {
                 const error = await response.json();
@@ -166,6 +180,53 @@ export const TimerPage = () => {
             }
         } catch (error) {
             console.error('Error al iniciar:', error);
+        }
+    };
+
+    const agregarDescripcion = async () => {
+        if (!nuevaDescripcion.trim() || !entradaActiva) return;
+
+        try {
+            const response = await fetch(`${CONFIG.uri}/entries/${entradaActiva._id}/description`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    descripcion: nuevaDescripcion
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setEntradaActiva(data.entry);
+                setNuevaDescripcion('');
+                await cargarHistorial();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error al agregar descripción');
+            }
+        } catch (error) {
+            console.error('Error al agregar descripción:', error);
+        }
+    };
+
+    const eliminarDescripcion = async (entryId, descripcionIndex) => {
+        if (!window.confirm('¿Eliminar esta descripción?')) return;
+
+        try {
+            const response = await fetch(`${CONFIG.uri}/entries/${entryId}/description`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descripcionIndex })
+            });
+
+            if (response.ok) {
+                await cargarHistorial();
+                if (entradaActiva?._id === entryId) {
+                    await cargarEntradaActiva();
+                }
+            }
+        } catch (error) {
+            console.error('Error al eliminar descripción:', error);
         }
     };
 
@@ -307,11 +368,25 @@ export const TimerPage = () => {
         setEntradaSeleccionada(null);
     };
 
+    const toggleExpandEntry = (entryId) => {
+        setExpandedEntries(prev => ({
+            ...prev,
+            [entryId]: !prev[entryId]
+        }));
+    };
+
     const formatearTiempo = (segundos) => {
         const horas = Math.floor(segundos / 3600);
         const minutos = Math.floor((segundos % 3600) / 60);
         const segs = segundos % 60;
         return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`;
+    };
+
+    const formatearHora = (timestamp) => {
+        return new Date(timestamp).toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     const calcularTiempoHoy = () => {
@@ -321,7 +396,26 @@ export const TimerPage = () => {
     return (
         <>
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <FormControl sx={{ minWidth: 300, flex: 1 }}>
+                        <TextField
+                            placeholder='¿Qué estás trabajando?'
+                            value={nuevaDescripcion}
+                            onChange={(e) => setNuevaDescripcion(e.target.value)}
+                            disabled={!entradaActiva && !tareaSeleccionada}
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                    if (entradaActiva) {
+                                        agregarDescripcion();
+                                    } else {
+                                        iniciarTimer();
+                                    }
+                                }
+                            }}
+                            multiline
+                            maxRows={3}
+                        />
+                    </FormControl>
                     <FormControl sx={{ minWidth: 300, flex: 1 }}>
                         <Select
                             value={tareaSeleccionada || ''}
@@ -342,29 +436,49 @@ export const TimerPage = () => {
                             ))}
                         </Select>
                     </FormControl>
-                    <Button
-                        variant="outlined"
-                        startIcon={<Add />}
-                        onClick={() => setDialogTarea(true)}
-                        sx={{ textTransform: 'none', minWidth: 140 }}
-                    >
-                        Nueva tarea
-                    </Button>
-
-                    <Button
-                        variant="outlined"
-                        startIcon={<Settings />}
-                        onClick={() => setDialogGestionTareas(true)}
-                        sx={{ textTransform: 'none', minWidth: 140 }}
-                    >
-                        Gestionar tareas
-                    </Button>
+                    {
+                        user && user.esLider && (
+                            <Button
+                                variant="outlined"
+                                startIcon={<Add />}
+                                onClick={() => setDialogTarea(true)}
+                                sx={{ textTransform: 'none', minWidth: 140 }}
+                            >
+                                Nueva tarea
+                            </Button>
+                        )
+                    }
+                    {
+                        user && user.esLider && (
+                            <Button
+                                variant="outlined"
+                                startIcon={<Settings />}
+                                onClick={() => setDialogGestionTareas(true)}
+                                sx={{ textTransform: 'none', minWidth: 140 }}
+                            >
+                                Gestionar tareas
+                            </Button>
+                        )
+                    }
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 'auto' }}>
                         <Typography variant="h5" fontFamily="monospace" fontWeight="700" sx={{ minWidth: 100, textAlign: 'center' }}>
                             {formatearTiempo(tiempoActual)}
                         </Typography>
                         {entradaActiva?.estado === 'activo' ? (
                             <>
+                                {nuevaDescripcion.trim() && (
+                                    <Button
+                                        variant="outlined"
+                                        onClick={agregarDescripcion}
+                                        sx={{
+                                            minWidth: 110,
+                                            textTransform: 'none',
+                                        }}
+                                        startIcon={<Send />}
+                                    >
+                                        Agregar nota
+                                    </Button>
+                                )}
                                 <Button
                                     variant="contained"
                                     onClick={pausarTimer}
@@ -416,6 +530,32 @@ export const TimerPage = () => {
                         )}
                     </Box>
                 </Box>
+
+                {/* Mostrar descripciones de la entrada activa */}
+                {entradaActiva && entradaActiva.descripciones && entradaActiva.descripciones.length > 0 && (
+                    <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                            Notas de esta sesión:
+                        </Typography>
+                        {entradaActiva.descripciones.map((desc, idx) => (
+                            <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+                                <Typography variant="caption" color="primary" sx={{ minWidth: 45, fontWeight: 600 }}>
+                                    {formatearHora(desc.timestamp)}
+                                </Typography>
+                                <Typography variant="body2" sx={{ flex: 1 }}>
+                                    {desc.texto}
+                                </Typography>
+                                <IconButton
+                                    size="small"
+                                    onClick={() => eliminarDescripcion(entradaActiva._id, idx)}
+                                    sx={{ color: 'text.secondary', p: 0.5 }}
+                                >
+                                    <Delete fontSize="small" />
+                                </IconButton>
+                            </Box>
+                        ))}
+                    </Box>
+                )}
             </Paper>
 
             <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
@@ -455,60 +595,111 @@ export const TimerPage = () => {
                                     <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>TAREA</TableCell>
                                     <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>ESTADO</TableCell>
                                     <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>SESIONES</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>NOTAS</TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>DURACIÓN</TableCell>
                                     <TableCell></TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {historial.map((entrada) => (
-                                    <TableRow key={entrada._id} hover>
-                                        <TableCell>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: entrada.color }} />
-                                                <Typography variant="body2" fontWeight={500}>{entrada.tarea}</Typography>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <Chip
-                                                    label={entrada.estado}
-                                                    size="small"
-                                                    color={entrada.estado === 'activo' ? 'success' : entrada.estado === 'pausado' ? 'warning' : 'default'}
-                                                />
-                                                {entrada.estado === 'pausado' && (
-                                                    <>
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => reanudarEntrada(entrada._id)}
-                                                            sx={{ color: '#03a9f4' }}
-                                                        >
-                                                            <PlayArrow fontSize="small" />
-                                                        </IconButton>
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => completarTimer(entrada._id)}
-                                                            sx={{ color: '#f44336' }}
-                                                        >
-                                                            <Stop fontSize="small" />
-                                                        </IconButton>
-                                                    </>
+                                    <React.Fragment key={entrada._id}>
+                                        <TableRow hover>
+                                            <TableCell>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: entrada.color }} />
+                                                    <Typography variant="body2" fontWeight={500}>{entrada.tarea}</Typography>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Chip
+                                                        label={entrada.estado}
+                                                        size="small"
+                                                        color={entrada.estado === 'activo' ? 'success' : entrada.estado === 'pausado' ? 'warning' : 'default'}
+                                                    />
+                                                    {entrada.estado === 'pausado' && (
+                                                        <>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => reanudarEntrada(entrada._id)}
+                                                                sx={{ color: '#03a9f4' }}
+                                                            >
+                                                                <PlayArrow fontSize="small" />
+                                                            </IconButton>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => completarTimer(entrada._id)}
+                                                                sx={{ color: '#f44336' }}
+                                                            >
+                                                                <Stop fontSize="small" />
+                                                            </IconButton>
+                                                        </>
+                                                    )}
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2">{entrada.segmentos.length}</Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                {entrada.descripciones && entrada.descripciones.length > 0 ? (
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => toggleExpandEntry(entrada._id)}
+                                                    >
+                                                        <DescriptionIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                                        <Typography variant="caption">
+                                                            {entrada.descripciones.length}
+                                                        </Typography>
+                                                        {expandedEntries[entrada._id] ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+                                                    </IconButton>
+                                                ) : (
+                                                    <Typography variant="caption" color="text.secondary">-</Typography>
                                                 )}
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2">{entrada.segmentos.length}</Typography>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
-                                                {formatearTiempo(entrada.duracionTotal)}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <IconButton size="small" onClick={(e) => handleMenuClick(e, entrada)}>
-                                                <MoreVert fontSize="small" />
-                                            </IconButton>
-                                        </TableCell>
-                                    </TableRow>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
+                                                    {formatearTiempo(entrada.duracionTotal)}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <IconButton size="small" onClick={(e) => handleMenuClick(e, entrada)}>
+                                                    <MoreVert fontSize="small" />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+                                        {entrada.descripciones && entrada.descripciones.length > 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={6} sx={{ py: 0, px: 0, borderBottom: expandedEntries[entrada._id] ? '1px solid' : 'none', borderColor: 'divider' }}>
+                                                    <Collapse in={expandedEntries[entrada._id]} timeout="auto" unmountOnExit>
+                                                        <Box sx={{ p: 2, bgcolor: 'action.hover' }}>
+                                                            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block', fontWeight: 600 }}>
+                                                                Historial de notas:
+                                                            </Typography>
+                                                            {entrada.descripciones.map((desc, idx) => (
+                                                                <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
+                                                                    <Typography variant="caption" color="primary" sx={{ minWidth: 45, fontWeight: 600 }}>
+                                                                        {formatearHora(desc.timestamp)}
+                                                                    </Typography>
+                                                                    <Typography variant="body2" sx={{ flex: 1 }}>
+                                                                        {desc.texto}
+                                                                    </Typography>
+                                                                    {entrada.estado !== 'completado' && (
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            onClick={() => eliminarDescripcion(entrada._id, idx)}
+                                                                            sx={{ color: 'text.secondary', p: 0.5 }}
+                                                                        >
+                                                                            <Delete fontSize="small" />
+                                                                        </IconButton>
+                                                                    )}
+                                                                </Box>
+                                                            ))}
+                                                        </Box>
+                                                    </Collapse>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </React.Fragment>
                                 ))}
                             </TableBody>
                         </Table>
