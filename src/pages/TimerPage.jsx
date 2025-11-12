@@ -27,8 +27,8 @@ import {
     ListItemText,
     Divider,
     Collapse,
-    Card,
-    CardContent,
+    FormControlLabel,
+    Checkbox,
 } from '@mui/material';
 import {
     PlayArrow,
@@ -40,7 +40,6 @@ import {
     Add,
     Settings,
     Close,
-    Edit,
     Send,
     ExpandMore,
     ExpandLess,
@@ -52,9 +51,7 @@ import { AuthContext } from '../contexts/AuthContext';
 export const TimerPage = () => {
     const [tareasDisponibles, setTareasDisponibles] = useState([]);
     const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
-    const [entradaActiva, setEntradaActiva] = useState(null);
     const [tiempoActual, setTiempoActual] = useState(0);
-    const [historial, setHistorial] = useState([]);
     const [anchorEl, setAnchorEl] = useState(null);
     const [entradaSeleccionada, setEntradaSeleccionada] = useState(null);
     const [dialogTarea, setDialogTarea] = useState(false);
@@ -63,13 +60,15 @@ export const TimerPage = () => {
     const [nuevaDescripcion, setNuevaDescripcion] = useState('');
     const [expandedEntries, setExpandedEntries] = useState({});
     const fechaHoy = new Date().toISOString().split('T')[0];
-    const { user } = useContext(AuthContext);
+    const { user, entradaActiva, setEntradaActiva, historial, pausarTimer, cargarHistorial } = useContext(AuthContext);
 
     useEffect(() => {
-        cargarTareas();
-        cargarEntradaActiva();
-        cargarHistorial();
-    }, []);
+        if (user) {
+            cargarTareas();
+            cargarEntradaActiva();
+            cargarHistorial(user);
+        }
+    }, [user]);
 
     useEffect(() => {
         let intervalo;
@@ -130,17 +129,7 @@ export const TimerPage = () => {
         }
     };
 
-    const cargarHistorial = async () => {
-        try {
-            const response = await fetch(`${CONFIG.uri}/entries/user/${user._id}/date/${fechaHoy}`);
-            if (response.ok) {
-                const data = await response.json();
-                setHistorial(data);
-            }
-        } catch (error) {
-            console.error('Error al cargar historial:', error);
-        }
-    };
+
 
     const calcularTiempoActual = (entrada) => {
         if (!entrada) return;
@@ -173,7 +162,7 @@ export const TimerPage = () => {
                 const data = await response.json();
                 setEntradaActiva(data.entry);
                 setNuevaDescripcion('');
-                await cargarHistorial();
+                await cargarHistorial(user);
             } else {
                 const error = await response.json();
                 alert(error.error || 'Error al iniciar timer');
@@ -199,7 +188,7 @@ export const TimerPage = () => {
                 const data = await response.json();
                 setEntradaActiva(data.entry);
                 setNuevaDescripcion('');
-                await cargarHistorial();
+                await cargarHistorial(user);
             } else {
                 const error = await response.json();
                 alert(error.error || 'Error al agregar descripción');
@@ -220,7 +209,7 @@ export const TimerPage = () => {
             });
 
             if (response.ok) {
-                await cargarHistorial();
+                await cargarHistorial(user);
                 if (entradaActiva?._id === entryId) {
                     await cargarEntradaActiva();
                 }
@@ -242,31 +231,13 @@ export const TimerPage = () => {
                 const data = await response.json();
                 setEntradaActiva(data.entry);
                 setTareaSeleccionada(data.entry.taskId);
-                await cargarHistorial();
+                await cargarHistorial(user);
             } else {
                 const error = await response.json();
                 alert(error.error || 'Error al reanudar');
             }
         } catch (error) {
             console.error('Error al reanudar:', error);
-        }
-    };
-
-    const pausarTimer = async () => {
-        try {
-            const response = await fetch(`${CONFIG.uri}/entries/pause`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user._id })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setEntradaActiva(data.entry);
-                await cargarHistorial();
-            }
-        } catch (error) {
-            console.error('Error al pausar:', error);
         }
     };
 
@@ -282,7 +253,7 @@ export const TimerPage = () => {
                 setEntradaActiva(null);
                 setTareaSeleccionada(null);
                 setTiempoActual(0);
-                await cargarHistorial();
+                await cargarHistorial(user);
             }
         } catch (error) {
             console.error('Error al completar:', error);
@@ -302,7 +273,8 @@ export const TimerPage = () => {
                 body: JSON.stringify({
                     userId: user._id,
                     areaId: user.area,
-                    ...nuevaTarea
+                    ...nuevaTarea,
+                    withPause: !nuevaTarea.withPause
                 })
             });
 
@@ -348,7 +320,7 @@ export const TimerPage = () => {
             });
 
             if (response.ok) {
-                await cargarHistorial();
+                await cargarHistorial(user);
                 handleMenuClose();
                 if (entradaSeleccionada.taskId === tareaSeleccionada && !entradaActiva) {
                     setTiempoActual(0);
@@ -393,7 +365,6 @@ export const TimerPage = () => {
     const calcularTiempoHoy = () => {
         return historial.reduce((total, e) => total + e.duracionTotal, 0);
     };
-
     return (
         <>
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
@@ -482,7 +453,7 @@ export const TimerPage = () => {
                                 )}
                                 <Button
                                     variant="contained"
-                                    onClick={pausarTimer}
+                                    onClick={() => pausarTimer(user)}
                                     sx={{
                                         bgcolor: '#FF9800',
                                         minWidth: 110,
@@ -734,6 +705,18 @@ export const TimerPage = () => {
                         type="color"
                         value={nuevaTarea.color}
                         onChange={(e) => setNuevaTarea({ ...nuevaTarea, color: e.target.value })}
+                    />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={nuevaTarea.withPause || false}
+                                onChange={(e) =>
+                                    setNuevaTarea({ ...nuevaTarea, withPause: e.target.checked })
+                                }
+                            />
+                        }
+                        label="No pausar automáticamente"
+                        sx={{ mt: 2 }}
                     />
                 </DialogContent>
                 <DialogActions>
