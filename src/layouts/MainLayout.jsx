@@ -25,8 +25,6 @@ import {
 import { Outlet, useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
-import axios from 'axios';
-import { CONFIG } from '../config';
 
 const drawerWidth = 240;
 
