@@ -1,6 +1,6 @@
 // pages/TeamDashboard.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
     Box,
     Paper,
@@ -49,6 +49,7 @@ import {
     CalendarMonth,
 } from '@mui/icons-material';
 import { CONFIG } from '../config';
+import { AuthContext } from '../contexts/AuthContext';
 
 export const TeamDashboard = () => {
     const [actividadEquipo, setActividadEquipo] = useState([]);
@@ -58,14 +59,12 @@ export const TeamDashboard = () => {
     const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
     const [detalleUsuario, setDetalleUsuario] = useState(null);
     const [expandedUsers, setExpandedUsers] = useState({});
-
-    // Estados para filtros de fecha
     const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0]);
     const [rangoFechasDetalle, setRangoFechasDetalle] = useState({
         inicio: new Date().toISOString().split('T')[0],
         fin: new Date().toISOString().split('T')[0]
     });
-
+    const { user } = useContext(AuthContext);
     useEffect(() => {
         cargarDatos();
     }, [fechaSeleccionada]);
@@ -73,16 +72,12 @@ export const TeamDashboard = () => {
     const cargarDatos = async () => {
         try {
             setLoading(true);
-
-            // Cargar entradas activas (siempre del día actual)
-            const responseActivas = await fetch(`${CONFIG.uri}/entries/team/active`);
+            const responseActivas = await fetch(`${CONFIG.uri}/entries/team/active/area/${user.area}`);
             if (responseActivas.ok) {
                 const dataActivas = await responseActivas.json();
                 setEntradasActivas(dataActivas);
             }
-
-            // Cargar actividad de la fecha seleccionada
-            const responseEquipo = await fetch(`${CONFIG.uri}/entries/team/date/${fechaSeleccionada}`);
+            const responseEquipo = await fetch(`${CONFIG.uri}/entries/team/date/${fechaSeleccionada}/area/${user.area}`);
             if (responseEquipo.ok) {
                 const dataEquipo = await responseEquipo.json();
                 setActividadEquipo(dataEquipo);
@@ -119,7 +114,6 @@ export const TeamDashboard = () => {
         }));
     };
 
-    // Funciones de filtro rápido
     const irAHoy = () => {
         setFechaSeleccionada(new Date().toISOString().split('T')[0]);
     };
@@ -131,12 +125,11 @@ export const TeamDashboard = () => {
     };
 
     const irEstaSemana = () => {
-        // Ir al lunes de esta semana
         const hoy = new Date();
         const dia = hoy.getDay();
-        const diff = dia === 0 ? -6 : 1 - dia; // Si es domingo (0), retroceder 6 días
+        const diff = dia === 0 ? -6 : 1 - dia;
         const lunes = new Date(hoy);
-        lunes.setDate(hoy.getDate() + diff);
+        lunes.setDate(hoy.getDate() + diff + 1);
         setFechaSeleccionada(lunes.toISOString().split('T')[0]);
     };
 
@@ -609,7 +602,7 @@ export const TeamDashboard = () => {
                     Detalle histórico - {usuarioSeleccionado?.usuario}
                 </DialogTitle>
                 <DialogContent>
-                    <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap', mt: 1 }}>
                         <TextField
                             label="Fecha Inicio"
                             type="date"

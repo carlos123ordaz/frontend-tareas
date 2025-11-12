@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
     Box,
     Paper,
@@ -27,6 +27,7 @@ import {
     Assessment,
 } from '@mui/icons-material';
 import { CONFIG } from '../config';
+import { AuthContext } from '../contexts/AuthContext';
 
 export const ReportPage = () => {
     const [dialogExportar, setDialogExportar] = useState(false);
@@ -36,6 +37,7 @@ export const ReportPage = () => {
         fin: new Date().toISOString().split('T')[0]
     });
     const [entradas, setEntradas] = useState([]);
+    const { user } = useContext(AuthContext);
     const [estadisticas, setEstadisticas] = useState({
         totalEntradas: 0,
         totalSegundos: 0,
@@ -43,9 +45,6 @@ export const ReportPage = () => {
         fechaInicio: null,
         fechaFin: null
     });
-
-    const userId = localStorage.getItem('token');
-    const username = localStorage.getItem('username');
 
     useEffect(() => {
         if (dialogExportar) {
@@ -69,7 +68,7 @@ export const ReportPage = () => {
                 fechaFin = rangoFechas.fin;
             }
 
-            url = `${CONFIG.uri}/entries/user/${userId}/range/${fechaInicio}/${fechaFin}`;
+            url = `${CONFIG.uri}/entries/user/${user._id}/range/${fechaInicio}/${fechaFin}`;
 
             const response = await fetch(url);
             if (response.ok) {
@@ -179,8 +178,8 @@ export const ReportPage = () => {
         const url = URL.createObjectURL(blob);
 
         const nombreArchivo = tipoExportacion === 'todo'
-            ? `reporte_timetracker_${username}_completo_${new Date().toISOString().split('T')[0]}.csv`
-            : `reporte_timetracker_${username}_${rangoFechas.inicio}_${rangoFechas.fin}.csv`;
+            ? `reporte_timetracker_${user.username}_completo_${new Date().toISOString().split('T')[0]}.csv`
+            : `reporte_timetracker_${user.username}_${rangoFechas.inicio}_${rangoFechas.fin}.csv`;
 
         link.setAttribute('href', url);
         link.setAttribute('download', nombreArchivo);
@@ -366,7 +365,7 @@ export const ReportPage = () => {
                                         Usuario
                                     </Typography>
                                     <Typography variant="body2" fontWeight={600}>
-                                        {username}
+                                        {user.username}
                                     </Typography>
                                 </Grid>
                                 <Grid size={{ xs: 6 }}>

@@ -1,89 +1,59 @@
-import { useState } from 'react';
-import { Box, Paper, TextField, Button, Typography, Alert, IconButton, InputAdornment } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Box, Paper, TextField, Button, Typography, Alert, IconButton, InputAdornment, MenuItem, Select, FormControl, InputLabel, FormHelperText } from '@mui/material';
 import { PersonAdd, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { CONFIG } from '../config';
+import { Controller, useForm } from 'react-hook-form';
+import userService from '../api/UserService';
+import areaService from '../api/AreaService';
 
 export const RegisterPage = () => {
     const navigate = useNavigate();
-    const [formData, setFormData] = useState({
-        username: '',
-        name: '',
-        lname: '',
-        password: '',
-        confirmPassword: ''
+    const { handleSubmit, control, watch, formState: { errors } } = useForm({
+        defaultValues: {
+            username: '',
+            name: '',
+            lname: '',
+            area: '',
+            password: '',
+            confirmPassword: ''
+        }
     });
+    const [areas, setAreas] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-
-        let newValue = value;
-        // Para username (iniciales): solo letras en mayúsculas
-        if (name === 'username') {
-            newValue = value.replace(/[^a-zA-Z]/g, '').toUpperCase();
+    const username = watch('username');
+    const password = watch('password');
+    const getAreas = async () => {
+        try {
+            const response = await areaService.getAll();
+            setAreas(response);
+        } catch (error) {
+            setError('Error de conexión con el servidor');
         }
-
-        setFormData({
-            ...formData,
-            [name]: newValue
-        });
-        setError('');
-    };
-
-    const handleRegister = async () => {
-        // Validaciones
-        if (formData.username.length < 2) {
-            setError('Las iniciales deben tener al menos 2 caracteres');
-            return;
-        }
-
-        if (!formData.name.trim() || !formData.lname.trim()) {
-            setError('Por favor completa tu nombre y apellido');
-            return;
-        }
-
-        if (formData.password.length < 6) {
-            setError('La contraseña debe tener al menos 6 caracteres');
-            return;
-        }
-
-        if (formData.password !== formData.confirmPassword) {
-            setError('Las contraseñas no coinciden');
-            return;
-        }
-
+    }
+    useEffect(() => {
+        getAreas();
+    }, []);
+    const onSubmit = async (data) => {
         setLoading(true);
         setError('');
-
         try {
-            const response = await fetch(`${CONFIG.uri}/users/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name: formData.name.trim(),
-                    lname: formData.lname.trim(),
-                    username: formData.username,
-                    password: formData.password
-                }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                setSuccess('Usuario registrado exitosamente. Redirigiendo al login...');
-                setTimeout(() => {
-                    navigate('/login');
-                }, 2000);
-            } else {
-                setError(data.msg || 'Error al registrar usuario');
+            const formData = {
+                name: data.name.trim(),
+                lname: data.lname.trim(),
+                username: data.username,
+                area: data.area,
+                password: data.password
             }
+            await userService.register(formData);
+            setSuccess('Usuario registrado exitosamente. Redirigiendo al login...');
+            setTimeout(() => {
+                navigate('/login');
+            }, 2000);
         } catch (err) {
             setError('Error de conexión con el servidor');
         } finally {
@@ -148,124 +118,236 @@ export const RegisterPage = () => {
                     </Alert>
                 )}
 
-                <TextField
-                    fullWidth
-                    label="Iniciales del usuario"
-                    name="username"
-                    variant="outlined"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder="Ej: FG"
-                    helperText={
-                        formData.username.length === 0
-                            ? "Ingrese las iniciales de su nombre y apellido"
-                            : formData.username.length === 1
-                                ? "Falta 1 carácter más"
-                                : "✓ Iniciales válidas"
-                    }
-                    error={formData.username.length === 1}
-                    inputProps={{ maxLength: 4 }}
-                    sx={{ mb: 2 }}
-                    required
-                    autoFocus
-                />
+                <form onSubmit={handleSubmit(onSubmit)}>
+                    <Controller
+                        name="username"
+                        control={control}
+                        rules={{
+                            required: 'Las iniciales son requeridas',
+                            minLength: {
+                                value: 2,
+                                message: 'Las iniciales deben tener al menos 2 caracteres'
+                            },
+                            maxLength: {
+                                value: 4,
+                                message: 'Las iniciales no pueden tener más de 4 caracteres'
+                            }
+                        }}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                fullWidth
+                                label="Iniciales del usuario"
+                                variant="outlined"
+                                placeholder="Ej: FG"
+                                onChange={(e) => {
+                                    const value = e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase();
+                                    field.onChange(value);
+                                    setError('');
+                                }}
+                                helperText={
+                                    errors.username?.message ||
+                                    (username.length === 0
+                                        ? "Ingrese las iniciales de su nombre y apellido"
+                                        : username.length === 1
+                                            ? "Falta 1 carácter más"
+                                            : "✓ Iniciales válidas")
+                                }
+                                error={!!errors.username || username.length === 1}
+                                inputProps={{ maxLength: 4 }}
+                                sx={{ mb: 2 }}
+                                required
+                                autoFocus
+                            />
+                        )}
+                    />
 
-                <TextField
-                    fullWidth
-                    label="Nombre(s)"
-                    name="name"
-                    variant="outlined"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Ej: Fernando"
-                    sx={{ mb: 2 }}
-                    required
-                />
+                    <Controller
+                        name="name"
+                        control={control}
+                        rules={{
+                            required: 'El nombre es requerido',
+                            validate: (value) => value.trim() !== '' || 'El nombre no puede estar vacío'
+                        }}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                fullWidth
+                                label="Nombre(s)"
+                                variant="outlined"
+                                placeholder="Ej: Fernando"
+                                error={!!errors.name}
+                                helperText={errors.name?.message}
+                                sx={{ mb: 2 }}
+                                required
+                                onChange={(e) => {
+                                    field.onChange(e);
+                                    setError('');
+                                }}
+                            />
+                        )}
+                    />
 
-                <TextField
-                    fullWidth
-                    label="Apellido(s)"
-                    name="lname"
-                    variant="outlined"
-                    value={formData.lname}
-                    onChange={handleChange}
-                    placeholder="Ej: García"
-                    sx={{ mb: 2 }}
-                    required
-                />
+                    <Controller
+                        name="lname"
+                        control={control}
+                        rules={{
+                            required: 'El apellido es requerido',
+                            validate: (value) => value.trim() !== '' || 'El apellido no puede estar vacío'
+                        }}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                fullWidth
+                                label="Apellido(s)"
+                                variant="outlined"
+                                placeholder="Ej: García"
+                                error={!!errors.lname}
+                                helperText={errors.lname?.message}
+                                sx={{ mb: 2 }}
+                                required
+                                onChange={(e) => {
+                                    field.onChange(e);
+                                    setError('');
+                                }}
+                            />
+                        )}
+                    />
 
-                <TextField
-                    fullWidth
-                    label="Contraseña"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    variant="outlined"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Mínimo 6 caracteres"
-                    sx={{ mb: 2 }}
-                    required
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    edge="end"
+                    <Controller
+                        name="area"
+                        control={control}
+                        rules={{
+                            required: 'El área es requerida'
+                        }}
+                        render={({ field }) => (
+                            <FormControl fullWidth sx={{ mb: 2 }} error={!!errors.area}>
+                                <InputLabel>Área</InputLabel>
+                                <Select
+                                    {...field}
+                                    label="Área"
+                                    onChange={(e) => {
+                                        field.onChange(e);
+                                        setError('');
+                                    }}
                                 >
-                                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                                </IconButton>
-                            </InputAdornment>
-                        ),
-                    }}
-                />
+                                    {
+                                        areas?.map((area) => (
+                                            <MenuItem key={area._id} value={area._id}>{area.name}</MenuItem>
+                                        ))
+                                    }
+                                </Select>
+                                {errors.area && (
+                                    <FormHelperText>{errors.area.message}</FormHelperText>
+                                )}
+                            </FormControl>
+                        )}
+                    />
 
-                <TextField
-                    fullWidth
-                    label="Confirmar Contraseña"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    variant="outlined"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Repite tu contraseña"
-                    sx={{ mb: 3 }}
-                    required
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    edge="end"
-                                >
-                                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                                </IconButton>
-                            </InputAdornment>
-                        ),
-                    }}
-                />
+                    <Controller
+                        name="password"
+                        control={control}
+                        rules={{
+                            required: 'La contraseña es requerida',
+                            minLength: {
+                                value: 6,
+                                message: 'La contraseña debe tener al menos 6 caracteres'
+                            }
+                        }}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                fullWidth
+                                label="Contraseña"
+                                type={showPassword ? 'text' : 'password'}
+                                variant="outlined"
+                                placeholder="Mínimo 6 caracteres"
+                                error={!!errors.password}
+                                helperText={errors.password?.message}
+                                sx={{ mb: 2 }}
+                                required
+                                onChange={(e) => {
+                                    field.onChange(e);
+                                    setError('');
+                                }}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                edge="end"
+                                            >
+                                                {showPassword ? <VisibilityOff /> : <Visibility />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                        )}
+                    />
 
-                <Button
-                    fullWidth
-                    variant="contained"
-                    size="large"
-                    onClick={handleRegister}
-                    disabled={loading || formData.username.length < 2}
-                    sx={{
-                        py: 1.5,
-                        bgcolor: '#03a9f4',
-                        textTransform: 'none',
-                        fontSize: '1rem',
-                        fontWeight: 600,
-                        boxShadow: 'none',
-                        '&:hover': {
-                            bgcolor: '#0288d1',
+                    <Controller
+                        name="confirmPassword"
+                        control={control}
+                        rules={{
+                            required: 'Confirma tu contraseña',
+                            validate: (value) => value === password || 'Las contraseñas no coinciden'
+                        }}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                fullWidth
+                                label="Confirmar Contraseña"
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                variant="outlined"
+                                placeholder="Repite tu contraseña"
+                                error={!!errors.confirmPassword}
+                                helperText={errors.confirmPassword?.message}
+                                sx={{ mb: 3 }}
+                                required
+                                onChange={(e) => {
+                                    field.onChange(e);
+                                    setError('');
+                                }}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                edge="end"
+                                            >
+                                                {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                        )}
+                    />
+
+                    <Button
+                        fullWidth
+                        type="submit"
+                        variant="contained"
+                        size="large"
+                        disabled={loading || username.length < 2}
+                        sx={{
+                            py: 1.5,
+                            bgcolor: '#03a9f4',
+                            textTransform: 'none',
+                            fontSize: '1rem',
+                            fontWeight: 600,
                             boxShadow: 'none',
-                        },
-                        mb: 2
-                    }}
-                >
-                    {loading ? 'Registrando...' : 'Registrarse'}
-                </Button>
+                            '&:hover': {
+                                bgcolor: '#0288d1',
+                                boxShadow: 'none',
+                            },
+                            mb: 2
+                        }}
+                    >
+                        {loading ? 'Registrando...' : 'Registrarse'}
+                    </Button>
+                </form>
 
                 <Button
                     fullWidth

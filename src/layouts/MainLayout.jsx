@@ -35,43 +35,34 @@ export default function MainLayout() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const { mode, toggleTheme } = useContext(ThemeContext);
     const { setUser, user } = useContext(AuthContext);
-    const getUser = (userId) => {
-        axios.get(`${CONFIG.uri}/users/${userId}`).then((res) => {
-            setUser(res.data);
-        }).catch((err) => {
-            navigate('/login');
-            console.log(err);
-        })
-    }
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
+        const usuario = localStorage.getItem('user');
+        if (!usuario) {
             navigate('/login');
         } else {
-            getUser(token);
+            setUser(JSON.parse(usuario));
         }
-    }, [navigate]);
+    }, []);
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         navigate('/login');
     };
-
     const menuItems = [
         { texto: 'Timer', icono: <Timer />, ruta: '/timer' },
         { texto: 'Dashboard', icono: <Dashboard />, ruta: '/dashboard' },
         { texto: 'Reportes', icono: <Assessment />, ruta: '/reportes' },
+        ...(user?.esLider ? [{
+            texto: 'Control',
+            icono: <ControlPoint />,
+            ruta: '/team-dashboard'
+        }] : [])
     ];
 
-    useEffect(() => {
-        if (user && user.esLider) {
-            menuItems.push({ texto: 'Control', icono: <ControlPoint />, ruta: '/team-dashboard' });
-        }
-    }, [user])
     const drawer = (
         <Box>
             <Box sx={{

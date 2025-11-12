@@ -62,7 +62,6 @@ export const TimerPage = () => {
     const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', color: '#607D8B' });
     const [nuevaDescripcion, setNuevaDescripcion] = useState('');
     const [expandedEntries, setExpandedEntries] = useState({});
-    const userId = localStorage.getItem('token');
     const fechaHoy = new Date().toISOString().split('T')[0];
     const { user } = useContext(AuthContext);
 
@@ -105,7 +104,7 @@ export const TimerPage = () => {
 
     const cargarTareas = async () => {
         try {
-            const response = await fetch(`${CONFIG.uri}/tasks`);
+            const response = await fetch(`${CONFIG.uri}/tasks/area/${user.area}`);
             if (response.ok) {
                 const data = await response.json();
                 setTareasDisponibles(data);
@@ -117,7 +116,7 @@ export const TimerPage = () => {
 
     const cargarEntradaActiva = async () => {
         try {
-            const response = await fetch(`${CONFIG.uri}/entries/active/${userId}`);
+            const response = await fetch(`${CONFIG.uri}/entries/active/${user._id}`);
             if (response.ok) {
                 const data = await response.json();
                 if (data) {
@@ -133,7 +132,7 @@ export const TimerPage = () => {
 
     const cargarHistorial = async () => {
         try {
-            const response = await fetch(`${CONFIG.uri}/entries/user/${userId}/date/${fechaHoy}`);
+            const response = await fetch(`${CONFIG.uri}/entries/user/${user._id}/date/${fechaHoy}`);
             if (response.ok) {
                 const data = await response.json();
                 setHistorial(data);
@@ -162,7 +161,8 @@ export const TimerPage = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId,
+                    userId: user._id,
+                    areaId: user.area,
                     taskId: tareaSeleccionada,
                     fecha: fechaHoy,
                     descripcion: nuevaDescripcion
@@ -235,7 +235,7 @@ export const TimerPage = () => {
             const response = await fetch(`${CONFIG.uri}/entries/resume/${entryId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
+                body: JSON.stringify({ userId: user._id })
             });
 
             if (response.ok) {
@@ -257,7 +257,7 @@ export const TimerPage = () => {
             const response = await fetch(`${CONFIG.uri}/entries/pause`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
+                body: JSON.stringify({ userId: user._id })
             });
 
             if (response.ok) {
@@ -275,7 +275,7 @@ export const TimerPage = () => {
             const response = await fetch(`${CONFIG.uri}/entries/complete/${entryId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
+                body: JSON.stringify({ userId: user._id })
             });
 
             if (response.ok) {
@@ -294,13 +294,14 @@ export const TimerPage = () => {
             alert('Ingresa el nombre de la tarea');
             return;
         }
-
+        console.log()
         try {
             const response = await fetch(`${CONFIG.uri}/tasks/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId,
+                    userId: user._id,
+                    areaId: user.area,
                     ...nuevaTarea
                 })
             });

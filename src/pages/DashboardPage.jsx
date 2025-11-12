@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
     Box,
     Paper,
@@ -33,6 +33,7 @@ import {
     AccessTime,
 } from '@mui/icons-material';
 import { CONFIG } from '../config';
+import { AuthContext } from '../contexts/AuthContext';
 
 export const DashboardPage = () => {
     const [filtro, setFiltro] = useState('hoy');
@@ -43,7 +44,7 @@ export const DashboardPage = () => {
         fin: new Date().toISOString().split('T')[0]
     });
 
-    const userId = localStorage.getItem('token');
+    const { user } = useContext(AuthContext);
 
     useEffect(() => {
         cargarDatos();
@@ -53,7 +54,7 @@ export const DashboardPage = () => {
         try {
             const { fechaInicio, fechaFin } = obtenerRangoFechas();
             const response = await fetch(
-                `${CONFIG.uri}/entries/user/${userId}/range/${fechaInicio}/${fechaFin}`
+                `${CONFIG.uri}/entries/user/${user._id}/range/${fechaInicio}/${fechaFin}`
             );
             if (response.ok) {
                 const data = await response.json();
