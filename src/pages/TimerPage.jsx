@@ -47,6 +47,7 @@ import {
 } from '@mui/icons-material';
 import { CONFIG } from '../config';
 import { AuthContext } from '../contexts/AuthContext';
+import axios from 'axios';
 
 export const TimerPage = () => {
     const [tareasDisponibles, setTareasDisponibles] = useState([]);
@@ -265,29 +266,19 @@ export const TimerPage = () => {
             alert('Ingresa el nombre de la tarea');
             return;
         }
-        console.log()
         try {
-            const response = await fetch(`${CONFIG.uri}/tasks/create`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user._id,
-                    areaId: user.area,
-                    ...nuevaTarea,
-                    withPause: !nuevaTarea.withPause
-                })
+            await axios.post(`${CONFIG.uri}/tasks/create`, {
+                userId: user._id,
+                areaId: user.area,
+                ...nuevaTarea,
+                withPause: !nuevaTarea.withPause
             });
-
-            if (response.ok) {
-                await cargarTareas();
-                setDialogTarea(false);
-                setNuevaTarea({ nombre: '', color: '#607D8B' });
-            } else {
-                const error = await response.json();
-                alert(error.msg || 'Error al crear tarea');
-            }
+            await cargarTareas();
+            setDialogTarea(false);
+            setNuevaTarea({ nombre: '', color: '#607D8B' });
         } catch (error) {
-            console.error('Error:', error);
+            console.log('error: ', error)
+            alert(JSON.stringify(error?.response?.data?.error || 'Error interno'));
         }
     };
 
