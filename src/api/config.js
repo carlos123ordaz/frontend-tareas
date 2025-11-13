@@ -1,7 +1,8 @@
 import axios from "axios";
+import { CONFIG } from "../config";
 
 const axiosInstance = axios.create({
-    baseURL: 'https://backend-tareas-production-281c.up.railway.app/api',
+    baseURL: CONFIG.uri,
     timeout: 10000
 });
 

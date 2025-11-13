@@ -34,6 +34,7 @@ import {
 } from '@mui/icons-material';
 import { CONFIG } from '../config';
 import { AuthContext } from '../contexts/AuthContext';
+import axios from 'axios';
 
 export const DashboardPage = () => {
     const [filtro, setFiltro] = useState('hoy');
@@ -53,13 +54,8 @@ export const DashboardPage = () => {
     const cargarDatos = async () => {
         try {
             const { fechaInicio, fechaFin } = obtenerRangoFechas();
-            const response = await fetch(
-                `${CONFIG.uri}/entries/user/${user._id}/range/${fechaInicio}/${fechaFin}`
-            );
-            if (response.ok) {
-                const data = await response.json();
-                setEntradas(data);
-            }
+            const response = await axios.get(`${CONFIG.uri}/entries/user/${user._id}/range/${fechaInicio}/${fechaFin}`)
+            setEntradas(response.data);
         } catch (error) {
             console.error('Error al cargar datos:', error);
         }

@@ -49,7 +49,7 @@ export const AuthContextProvider = ({ children }) => {
     useEffect(() => {
         const unlistenPromise = listen("user_inactive", (_) => {
             if (!userRef.current || !entradaRef.current) return;
-            if (entradaRef.current && entradaRef.current.estado === 'activo' && entradaRef.current.withPause) {
+            if (entradaRef.current.estado === 'activo' && entradaRef.current.withPause) {
                 pausarTimer(userRef.current);
             }
         });
