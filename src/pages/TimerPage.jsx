@@ -29,6 +29,7 @@ import {
     Collapse,
     FormControlLabel,
     Checkbox,
+    Tooltip,
 } from '@mui/material';
 import {
     PlayArrow,
@@ -44,10 +45,12 @@ import {
     ExpandMore,
     ExpandLess,
     Description as DescriptionIcon,
+    OpenInFull,
 } from '@mui/icons-material';
 import { CONFIG } from '../config';
 import { AuthContext } from '../contexts/AuthContext';
 import axios from 'axios';
+import { invoke } from '@tauri-apps/api/core';
 
 export const TimerPage = () => {
     const [tareasDisponibles, setTareasDisponibles] = useState([]);
@@ -60,6 +63,7 @@ export const TimerPage = () => {
     const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', color: '#607D8B' });
     const [nuevaDescripcion, setNuevaDescripcion] = useState('');
     const [expandedEntries, setExpandedEntries] = useState({});
+    const [modoMini, setModoMini] = useState(() => localStorage.getItem('modoMini') === 'true');
     const fechaHoy = new Date().toISOString().split('T')[0];
     const { user, entradaActiva, setEntradaActiva, historial, pausarTimer, cargarHistorial } = useContext(AuthContext);
 
@@ -101,6 +105,16 @@ export const TimerPage = () => {
             setTiempoActual(0);
         }
     }, [tareaSeleccionada, historial, entradaActiva?.estado]);
+
+    useEffect(() => {
+        if (!modoMini) {
+            return;
+        }
+
+        invoke('set_mini_mode', { enabled: true }).catch((error) => {
+            console.error('Error al restaurar modo mini:', error);
+        });
+    }, [modoMini]);
 
     const cargarTareas = async () => {
         try {
@@ -356,6 +370,119 @@ export const TimerPage = () => {
     const calcularTiempoHoy = () => {
         return historial.reduce((total, e) => total + e.duracionTotal, 0);
     };
+
+    const actualizarModoMini = async (enabled) => {
+        try {
+            await invoke('set_mini_mode', { enabled });
+            localStorage.setItem('modoMini', String(enabled));
+            setModoMini(enabled);
+            window.dispatchEvent(new Event('mini-mode-changed'));
+        } catch (error) {
+            console.error('Error al cambiar modo mini:', error);
+            alert('No se pudo cambiar al modo mini');
+        }
+    };
+
+    if (modoMini) {
+        return (
+            <Paper
+                elevation={0}
+                sx={{
+                    p: 1.25,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    height: 'calc(100vh - 16px)',
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: 1,
+                }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
+                        Modo mini
+                    </Typography>
+                    <Tooltip title="Restaurar vista completa">
+                        <IconButton size="small" onClick={() => actualizarModoMini(false)}>
+                            <OpenInFull fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
+
+                <FormControl fullWidth size="small">
+                    <Select
+                        value={tareaSeleccionada || ''}
+                        onChange={(e) => setTareaSeleccionada(e.target.value)}
+                        displayEmpty
+                        disabled={entradaActiva?.estado === 'activo'}
+                    >
+                        <MenuItem value="" disabled>
+                            <em>Seleccionar tarea...</em>
+                        </MenuItem>
+                        {tareasDisponibles.map((tarea) => (
+                            <MenuItem key={tarea._id} value={tarea._id}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: tarea.color }} />
+                                    <Typography variant="body2">{tarea.nombre}</Typography>
+                                </Box>
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                <Typography
+                    variant="h4"
+                    fontFamily="monospace"
+                    fontWeight="700"
+                    sx={{ textAlign: 'center', letterSpacing: 1, lineHeight: 1.1 }}
+                >
+                    {formatearTiempo(tiempoActual)}
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    {entradaActiva?.estado === 'activo' ? (
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={() => pausarTimer(user)}
+                            sx={{
+                                bgcolor: '#FF9800',
+                                textTransform: 'none',
+                                minHeight: 40,
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: '#F57C00', boxShadow: 'none' }
+                            }}
+                            startIcon={<Pause />}
+                        >
+                            Pausar
+                        </Button>
+                    ) : (
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={iniciarTimer}
+                            disabled={!tareaSeleccionada}
+                            sx={{
+                                bgcolor: '#03a9f4',
+                                textTransform: 'none',
+                                minHeight: 40,
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: '#0288d1', boxShadow: 'none' }
+                            }}
+                            startIcon={<PlayArrow />}
+                        >
+                            {historial.find(e => e.taskId === tareaSeleccionada && e.estado === 'pausado')
+                                ? 'Reanudar'
+                                : 'Iniciar'}
+                        </Button>
+                    )}
+                </Box>
+            </Paper>
+        );
+    }
+
     return (
         <>
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>

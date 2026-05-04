@@ -21,16 +21,20 @@ import {
     Brightness4,
     Brightness7,
     ControlPoint,
+    PictureInPictureAlt,
 } from '@mui/icons-material';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
+import { invoke } from '@tauri-apps/api/core';
 
 const drawerWidth = 240;
 
 export default function MainLayout() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [modoMini, setModoMini] = useState(() => localStorage.getItem('modoMini') === 'true');
     const { mode, toggleTheme } = useContext(ThemeContext);
     const { setUser, user } = useContext(AuthContext);
     useEffect(() => {
@@ -42,6 +46,26 @@ export default function MainLayout() {
         }
     }, []);
 
+    useEffect(() => {
+        const syncMiniMode = () => {
+            setModoMini(localStorage.getItem('modoMini') === 'true');
+        };
+
+        window.addEventListener('mini-mode-changed', syncMiniMode);
+        window.addEventListener('storage', syncMiniMode);
+
+        return () => {
+            window.removeEventListener('mini-mode-changed', syncMiniMode);
+            window.removeEventListener('storage', syncMiniMode);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (modoMini && location.pathname !== '/timer' && location.pathname !== '/') {
+            navigate('/timer');
+        }
+    }, [modoMini, location.pathname, navigate]);
+
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
     };
@@ -50,6 +74,19 @@ export default function MainLayout() {
         localStorage.removeItem('user');
         navigate('/login');
     };
+
+    const actualizarModoMini = async (enabled) => {
+        try {
+            await invoke('set_mini_mode', { enabled });
+            localStorage.setItem('modoMini', String(enabled));
+            setModoMini(enabled);
+            window.dispatchEvent(new Event('mini-mode-changed'));
+        } catch (error) {
+            console.error('Error al cambiar modo mini:', error);
+            alert('No se pudo cambiar al modo mini');
+        }
+    };
+
     const menuItems = [
         { texto: 'Timer', icono: <Timer />, ruta: '/timer' },
         { texto: 'Dashboard', icono: <Dashboard />, ruta: '/dashboard' },
@@ -126,6 +163,21 @@ export default function MainLayout() {
         </Box>
     );
 
+    if (modoMini) {
+        return (
+            <Box
+                component="main"
+                sx={{
+                    minHeight: '100vh',
+                    p: 1,
+                    bgcolor: 'background.default',
+                }}
+            >
+                <Outlet />
+            </Box>
+        );
+    }
+
     return (
         <Box sx={{ display: 'flex', minHeight: '100vh' }}>
             <AppBar
@@ -149,6 +201,24 @@ export default function MainLayout() {
                     </IconButton>
 
                     <Box sx={{ flexGrow: 1 }} />
+
+                    <Button
+                        variant="outlined"
+                        startIcon={<PictureInPictureAlt />}
+                        onClick={() => actualizarModoMini(true)}
+                        sx={{
+                            mr: 2,
+                            textTransform: 'none',
+                            borderColor: 'divider',
+                            color: 'text.secondary',
+                            '&:hover': {
+                                borderColor: '#03a9f4',
+                                bgcolor: mode === 'light' ? '#e3f2fd' : 'rgba(3, 169, 244, 0.15)',
+                            }
+                        }}
+                    >
+                        Modo mini
+                    </Button>
 
                     <IconButton
                         onClick={toggleTheme}
