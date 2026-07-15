@@ -1,51 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
-    Box,
-    Paper,
-    Button,
-    Typography,
-    FormControl,
-    Select,
-    MenuItem,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    IconButton,
-    Menu,
-    MenuItem as MenuItemComponent,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Chip,
-    TextField,
-    List,
-    ListItem,
-    ListItemText,
-    Divider,
-    Collapse,
-    FormControlLabel,
-    Checkbox,
-    Tooltip,
+    Box, Paper, Button, Typography, FormControl, Select, MenuItem,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    IconButton, Menu, MenuItem as MenuItemComponent,
+    Dialog, DialogTitle, DialogContent, DialogActions,
+    Chip, TextField, List, ListItem, ListItemText, Divider, Collapse,
+    FormControlLabel, Checkbox, Tooltip,
 } from '@mui/material';
 import {
-    PlayArrow,
-    Stop,
-    Pause,
-    MoreVert,
-    Delete,
-    History,
-    Add,
-    Settings,
-    Close,
-    Send,
-    ExpandMore,
-    ExpandLess,
-    Description as DescriptionIcon,
-    OpenInFull,
+    PlayArrow, Stop, Pause, MoreVert, Delete, History, Add, Settings,
+    Close, Send, ExpandMore, ExpandLess, Description as DescriptionIcon, OpenInFull,
 } from '@mui/icons-material';
 import { CONFIG } from '../config';
 import { AuthContext } from '../contexts/AuthContext';
@@ -60,7 +24,7 @@ export const TimerPage = () => {
     const [entradaSeleccionada, setEntradaSeleccionada] = useState(null);
     const [dialogTarea, setDialogTarea] = useState(false);
     const [dialogGestionTareas, setDialogGestionTareas] = useState(false);
-    const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', color: '#607D8B' });
+    const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', color: '#0052CC' });
     const [nuevaDescripcion, setNuevaDescripcion] = useState('');
     const [expandedEntries, setExpandedEntries] = useState({});
     const [modoMini, setModoMini] = useState(() => localStorage.getItem('modoMini') === 'true');
@@ -78,54 +42,31 @@ export const TimerPage = () => {
     useEffect(() => {
         let intervalo;
         if (entradaActiva?.estado === 'activo') {
-            intervalo = setInterval(() => {
-                calcularTiempoActual(entradaActiva);
-            }, 1000);
+            intervalo = setInterval(() => calcularTiempoActual(entradaActiva), 1000);
         }
-        return () => {
-            if (intervalo) clearInterval(intervalo);
-        };
+        return () => { if (intervalo) clearInterval(intervalo); };
     }, [entradaActiva]);
 
     useEffect(() => {
-        if (entradaActiva?.estado === 'activo') {
-            return;
-        }
+        if (entradaActiva?.estado === 'activo') return;
         if (tareaSeleccionada) {
-            const entradaPausada = historial.find(
-                e => e.taskId === tareaSeleccionada && e.estado === 'pausado'
-            );
-
-            if (entradaPausada) {
-                setTiempoActual(entradaPausada.duracionTotal);
-            } else {
-                setTiempoActual(0);
-            }
+            const entradaPausada = historial.find(e => e.taskId === tareaSeleccionada && e.estado === 'pausado');
+            setTiempoActual(entradaPausada ? entradaPausada.duracionTotal : 0);
         } else {
             setTiempoActual(0);
         }
     }, [tareaSeleccionada, historial, entradaActiva?.estado]);
 
     useEffect(() => {
-        if (!modoMini) {
-            return;
-        }
-
-        invoke('set_mini_mode', { enabled: true }).catch((error) => {
-            console.error('Error al restaurar modo mini:', error);
-        });
+        if (!modoMini) return;
+        invoke('set_mini_mode', { enabled: true }).catch(console.error);
     }, [modoMini]);
 
     const cargarTareas = async () => {
         try {
             const response = await fetch(`${CONFIG.uri}/tasks/area/${user.area}`);
-            if (response.ok) {
-                const data = await response.json();
-                setTareasDisponibles(data);
-            }
-        } catch (error) {
-            console.error('Error al cargar tareas:', error);
-        }
+            if (response.ok) setTareasDisponibles(await response.json());
+        } catch (error) { console.error('Error al cargar tareas:', error); }
     };
 
     const cargarEntradaActiva = async () => {
@@ -139,12 +80,8 @@ export const TimerPage = () => {
                     calcularTiempoActual(data);
                 }
             }
-        } catch (error) {
-            console.error('Error al cargar entrada activa:', error);
-        }
+        } catch (error) { console.error('Error al cargar entrada activa:', error); }
     };
-
-
 
     const calcularTiempoActual = (entrada) => {
         if (!entrada) return;
@@ -159,20 +96,11 @@ export const TimerPage = () => {
 
     const iniciarTimer = async () => {
         if (!tareaSeleccionada) return;
-
         try {
             const response = await fetch(`${CONFIG.uri}/entries/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user._id,
-                    areaId: user.area,
-                    taskId: tareaSeleccionada,
-                    fecha: fechaHoy,
-                    descripcion: nuevaDescripcion
-                })
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user._id, areaId: user.area, taskId: tareaSeleccionada, fecha: fechaHoy, descripcion: nuevaDescripcion })
             });
-
             if (response.ok) {
                 const data = await response.json();
                 setEntradaActiva(data.entry);
@@ -182,23 +110,16 @@ export const TimerPage = () => {
                 const error = await response.json();
                 alert(error.error || 'Error al iniciar timer');
             }
-        } catch (error) {
-            console.error('Error al iniciar:', error);
-        }
+        } catch (error) { console.error('Error al iniciar:', error); }
     };
 
     const agregarDescripcion = async () => {
         if (!nuevaDescripcion.trim() || !entradaActiva) return;
-
         try {
             const response = await fetch(`${CONFIG.uri}/entries/${entradaActiva._id}/description`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    descripcion: nuevaDescripcion
-                })
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descripcion: nuevaDescripcion })
             });
-
             if (response.ok) {
                 const data = await response.json();
                 setEntradaActiva(data.entry);
@@ -208,40 +129,29 @@ export const TimerPage = () => {
                 const error = await response.json();
                 alert(error.error || 'Error al agregar descripción');
             }
-        } catch (error) {
-            console.error('Error al agregar descripción:', error);
-        }
+        } catch (error) { console.error('Error al agregar descripción:', error); }
     };
 
     const eliminarDescripcion = async (entryId, descripcionIndex) => {
         if (!window.confirm('¿Eliminar esta descripción?')) return;
-
         try {
             const response = await fetch(`${CONFIG.uri}/entries/${entryId}/description`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ descripcionIndex })
             });
-
             if (response.ok) {
                 await cargarHistorial(user);
-                if (entradaActiva?._id === entryId) {
-                    await cargarEntradaActiva();
-                }
+                if (entradaActiva?._id === entryId) await cargarEntradaActiva();
             }
-        } catch (error) {
-            console.error('Error al eliminar descripción:', error);
-        }
+        } catch (error) { console.error('Error al eliminar descripción:', error); }
     };
 
     const reanudarEntrada = async (entryId) => {
         try {
             const response = await fetch(`${CONFIG.uri}/entries/resume/${entryId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user._id })
             });
-
             if (response.ok) {
                 const data = await response.json();
                 setEntradaActiva(data.entry);
@@ -251,107 +161,62 @@ export const TimerPage = () => {
                 const error = await response.json();
                 alert(error.error || 'Error al reanudar');
             }
-        } catch (error) {
-            console.error('Error al reanudar:', error);
-        }
+        } catch (error) { console.error('Error al reanudar:', error); }
     };
 
     const completarTimer = async (entryId) => {
         try {
             const response = await fetch(`${CONFIG.uri}/entries/complete/${entryId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user._id })
             });
-
             if (response.ok) {
                 setEntradaActiva(null);
                 setTareaSeleccionada(null);
                 setTiempoActual(0);
                 await cargarHistorial(user);
             }
-        } catch (error) {
-            console.error('Error al completar:', error);
-        }
+        } catch (error) { console.error('Error al completar:', error); }
     };
 
     const crearTarea = async () => {
-        if (!nuevaTarea.nombre) {
-            alert('Ingresa el nombre de la tarea');
-            return;
-        }
+        if (!nuevaTarea.nombre) { alert('Ingresa el nombre de la tarea'); return; }
         try {
             await axios.post(`${CONFIG.uri}/tasks/create`, {
-                userId: user._id,
-                areaId: user.area,
-                ...nuevaTarea,
-                withPause: !nuevaTarea.withPause
+                userId: user._id, areaId: user.area, ...nuevaTarea, withPause: !nuevaTarea.withPause
             });
             await cargarTareas();
             setDialogTarea(false);
-            setNuevaTarea({ nombre: '', color: '#607D8B' });
-        } catch (error) {
-            console.log('error: ', error)
-            alert(JSON.stringify(error?.response?.data?.error || 'Error interno'));
-        }
+            setNuevaTarea({ nombre: '', color: '#0052CC' });
+        } catch (error) { alert(JSON.stringify(error?.response?.data?.error || 'Error interno')); }
     };
 
     const eliminarTarea = async (taskId) => {
-        if (!window.confirm('¿Estás seguro de eliminar esta tarea? No podrás recuperarla.')) {
-            return;
-        }
+        if (!window.confirm('¿Estás seguro de eliminar esta tarea?')) return;
         try {
-            const response = await fetch(`${CONFIG.uri}/tasks/${taskId}`, {
-                method: 'DELETE'
-            });
-
+            const response = await fetch(`${CONFIG.uri}/tasks/${taskId}`, { method: 'DELETE' });
             if (response.ok) {
                 await cargarTareas();
-                if (tareaSeleccionada === taskId) {
-                    setTareaSeleccionada(null);
-                }
+                if (tareaSeleccionada === taskId) setTareaSeleccionada(null);
             }
-        } catch (error) {
-            console.error('Error al eliminar tarea:', error);
-        }
+        } catch (error) { console.error('Error al eliminar tarea:', error); }
     };
 
     const eliminarEntrada = async () => {
         if (!entradaSeleccionada) return;
-
         try {
-            const response = await fetch(`${CONFIG.uri}/entries/${entradaSeleccionada._id}`, {
-                method: 'DELETE'
-            });
-
+            const response = await fetch(`${CONFIG.uri}/entries/${entradaSeleccionada._id}`, { method: 'DELETE' });
             if (response.ok) {
                 await cargarHistorial(user);
                 handleMenuClose();
-                if (entradaSeleccionada.taskId === tareaSeleccionada && !entradaActiva) {
-                    setTiempoActual(0);
-                }
+                if (entradaSeleccionada.taskId === tareaSeleccionada && !entradaActiva) setTiempoActual(0);
             }
-        } catch (error) {
-            console.error('Error al eliminar:', error);
-        }
+        } catch (error) { console.error('Error al eliminar:', error); }
     };
 
-    const handleMenuClick = (event, entrada) => {
-        setAnchorEl(event.currentTarget);
-        setEntradaSeleccionada(entrada);
-    };
-
-    const handleMenuClose = () => {
-        setAnchorEl(null);
-        setEntradaSeleccionada(null);
-    };
-
-    const toggleExpandEntry = (entryId) => {
-        setExpandedEntries(prev => ({
-            ...prev,
-            [entryId]: !prev[entryId]
-        }));
-    };
+    const handleMenuClick = (event, entrada) => { setAnchorEl(event.currentTarget); setEntradaSeleccionada(entrada); };
+    const handleMenuClose = () => { setAnchorEl(null); setEntradaSeleccionada(null); };
+    const toggleExpandEntry = (entryId) => setExpandedEntries(prev => ({ ...prev, [entryId]: !prev[entryId] }));
 
     const formatearTiempo = (segundos) => {
         const horas = Math.floor(segundos / 3600);
@@ -360,16 +225,8 @@ export const TimerPage = () => {
         return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`;
     };
 
-    const formatearHora = (timestamp) => {
-        return new Date(timestamp).toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const calcularTiempoHoy = () => {
-        return historial.reduce((total, e) => total + e.duracionTotal, 0);
-    };
+    const formatearHora = (timestamp) => new Date(timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    const calcularTiempoHoy = () => historial.reduce((total, e) => total + e.duracionTotal, 0);
 
     const actualizarModoMini = async (enabled) => {
         try {
@@ -377,270 +234,224 @@ export const TimerPage = () => {
             localStorage.setItem('modoMini', String(enabled));
             setModoMini(enabled);
             window.dispatchEvent(new Event('mini-mode-changed'));
-        } catch (error) {
-            console.error('Error al cambiar modo mini:', error);
-            alert('No se pudo cambiar al modo mini');
+        } catch (error) { console.error('Error al cambiar modo mini:', error); alert('No se pudo cambiar al modo mini'); }
+    };
+
+    // Status chip styles following Atlassian lozenge pattern
+    const getStatusProps = (estado) => {
+        switch (estado) {
+            case 'activo': return { label: 'En progreso', sx: { bgcolor: '#DEEBFF', color: '#0747A6', fontWeight: 700 } };
+            case 'pausado': return { label: 'Pausado', sx: { bgcolor: '#FFF0B3', color: '#FF8B00', fontWeight: 700 } };
+            case 'completado': return { label: 'Completado', sx: { bgcolor: '#E3FCEF', color: '#006644', fontWeight: 700 } };
+            default: return { label: estado, sx: {} };
         }
     };
 
     if (modoMini) {
+        const tareaActual = tareasDisponibles.find(t => t._id === tareaSeleccionada);
+        const estaActivo = entradaActiva?.estado === 'activo';
+        const estaPausado = historial.find(e => e.taskId === tareaSeleccionada && e.estado === 'pausado');
+
         return (
-            <Paper
-                elevation={0}
-                sx={{
-                    p: 1.25,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    height: 'calc(100vh - 16px)',
-                    boxSizing: 'border-box',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: 1,
-                }}
-            >
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
-                        Modo mini
-                    </Typography>
-                    <Tooltip title="Restaurar vista completa">
-                        <IconButton size="small" onClick={() => actualizarModoMini(false)}>
-                            <OpenInFull fontSize="small" />
+            <Box sx={{
+                height: 'calc(100vh - 16px)', boxSizing: 'border-box',
+                display: 'flex', flexDirection: 'column',
+                bgcolor: 'background.paper',
+                borderRadius: '8px',
+                border: '1px solid', borderColor: 'divider',
+                overflow: 'hidden',
+                userSelect: 'none',
+            }}>
+                {/* Zona central — tiempo + tarea */}
+                <Box sx={{
+                    flex: 1, display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    position: 'relative', px: 1,
+                }}>
+                    <Tooltip title="Vista completa">
+                        <IconButton size="small" onClick={() => actualizarModoMini(false)}
+                            sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, color: 'text.disabled', '&:hover': { color: 'text.secondary' } }}>
+                            <OpenInFull sx={{ fontSize: 11 }} />
                         </IconButton>
                     </Tooltip>
-                </Box>
 
-                <FormControl fullWidth size="small">
-                    <Select
-                        value={tareaSeleccionada || ''}
-                        onChange={(e) => setTareaSeleccionada(e.target.value)}
-                        displayEmpty
-                        disabled={entradaActiva?.estado === 'activo'}
-                    >
-                        <MenuItem value="" disabled>
-                            <em>Seleccionar tarea...</em>
-                        </MenuItem>
-                        {tareasDisponibles.map((tarea) => (
-                            <MenuItem key={tarea._id} value={tarea._id}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: tarea.color }} />
-                                    <Typography variant="body2">{tarea.nombre}</Typography>
-                                </Box>
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                    {/* Tarea */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+                        {tareaActual && <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: tareaActual.color, flexShrink: 0 }} />}
+                        <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 500, maxWidth: 120 }} noWrap>
+                            {tareaActual?.nombre || 'Sin tarea'}
+                        </Typography>
+                    </Box>
 
-                <Typography
-                    variant="h4"
-                    fontFamily="monospace"
-                    fontWeight="700"
-                    sx={{ textAlign: 'center', letterSpacing: 1, lineHeight: 1.1 }}
-                >
-                    {formatearTiempo(tiempoActual)}
-                </Typography>
+                    {/* Tiempo */}
+                    <Typography fontFamily="'SF Mono', 'Fira Code', monospace" fontWeight="700"
+                        sx={{
+                            fontSize: '1.75rem', lineHeight: 1, letterSpacing: 2,
+                            color: estaActivo ? 'primary.main' : 'text.primary',
+                        }}>
+                        {formatearTiempo(tiempoActual)}
+                    </Typography>
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    {entradaActiva?.estado === 'activo' ? (
-                        <Button
-                            fullWidth
-                            variant="contained"
-                            onClick={() => pausarTimer(user)}
-                            sx={{
-                                bgcolor: '#FF9800',
-                                textTransform: 'none',
-                                minHeight: 40,
-                                boxShadow: 'none',
-                                '&:hover': { bgcolor: '#F57C00', boxShadow: 'none' }
-                            }}
-                            startIcon={<Pause />}
-                        >
-                            Pausar
-                        </Button>
-                    ) : (
-                        <Button
-                            fullWidth
-                            variant="contained"
-                            onClick={iniciarTimer}
-                            disabled={!tareaSeleccionada}
-                            sx={{
-                                bgcolor: '#03a9f4',
-                                textTransform: 'none',
-                                minHeight: 40,
-                                boxShadow: 'none',
-                                '&:hover': { bgcolor: '#0288d1', boxShadow: 'none' }
-                            }}
-                            startIcon={<PlayArrow />}
-                        >
-                            {historial.find(e => e.taskId === tareaSeleccionada && e.estado === 'pausado')
-                                ? 'Reanudar'
-                                : 'Iniciar'}
-                        </Button>
+                    {/* Estado */}
+                    {(estaActivo || estaPausado) && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.375, mt: 0.375 }}>
+                            <Box sx={{
+                                width: 5, height: 5, borderRadius: '50%',
+                                bgcolor: estaActivo ? '#36B37E' : '#FF991F',
+                                ...(estaActivo && {
+                                    animation: 'pulse 1.5s infinite',
+                                    '@keyframes pulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.3 } },
+                                }),
+                            }} />
+                            <Typography sx={{
+                                fontSize: '0.55rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
+                                color: estaActivo ? '#36B37E' : '#FF991F',
+                            }}>
+                                {estaActivo ? 'Activo' : 'Pausado'}
+                            </Typography>
+                        </Box>
                     )}
                 </Box>
-            </Paper>
+
+                {/* Botones */}
+                <Box sx={{ px: 0.5, pb: 0.5, display: 'flex', gap: 0.5 }}>
+                    {estaActivo ? (
+                        <>
+                            <IconButton onClick={() => pausarTimer(user)} size="small"
+                                sx={{ flex: 1, borderRadius: 1, bgcolor: '#FF991F', color: '#fff', height: 26, '&:hover': { bgcolor: '#FF8B00' } }}>
+                                <Pause sx={{ fontSize: 16 }} />
+                            </IconButton>
+                            <IconButton onClick={() => completarTimer(entradaActiva._id)} size="small"
+                                sx={{ borderRadius: 1, bgcolor: '#DE350B', color: '#fff', height: 26, width: 30, '&:hover': { bgcolor: '#BF2600' } }}>
+                                <Stop sx={{ fontSize: 16 }} />
+                            </IconButton>
+                        </>
+                    ) : (
+                        <IconButton onClick={iniciarTimer} disabled={!tareaSeleccionada} size="small"
+                            sx={{ flex: 1, borderRadius: 1, bgcolor: 'primary.main', color: '#fff', height: 26,
+                                '&:hover': { bgcolor: 'primary.dark' }, '&.Mui-disabled': { bgcolor: 'action.disabledBackground', color: 'text.disabled' } }}>
+                            <PlayArrow sx={{ fontSize: 16 }} />
+                        </IconButton>
+                    )}
+                </Box>
+            </Box>
         );
     }
 
     return (
         <>
-            <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+            {/* Timer control bar */}
+            <Paper sx={{ p: 2.5, mb: 2.5 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    <FormControl sx={{ minWidth: 300, flex: 1 }}>
+                    <FormControl sx={{ minWidth: 280, flex: 1 }}>
                         <TextField
-                            placeholder='¿Qué estás trabajando?'
+                            placeholder='¿En qué estás trabajando?'
                             value={nuevaDescripcion}
                             onChange={(e) => setNuevaDescripcion(e.target.value)}
                             disabled={!entradaActiva && !tareaSeleccionada}
                             onKeyPress={(e) => {
                                 if (e.key === 'Enter') {
-                                    if (entradaActiva) {
-                                        agregarDescripcion();
-                                    } else {
-                                        iniciarTimer();
-                                    }
+                                    entradaActiva ? agregarDescripcion() : iniciarTimer();
                                 }
                             }}
-                            multiline
-                            maxRows={3}
+                            multiline maxRows={3}
+                            sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.default' } }}
                         />
                     </FormControl>
-                    <FormControl sx={{ minWidth: 300, flex: 1 }}>
+
+                    <FormControl sx={{ minWidth: 240 }}>
                         <Select
-                            value={tareaSeleccionada || ''}
-                            onChange={(e) => setTareaSeleccionada(e.target.value)}
-                            displayEmpty
-                            disabled={entradaActiva?.estado === 'activo'}
+                            value={tareaSeleccionada || ''} onChange={(e) => setTareaSeleccionada(e.target.value)}
+                            displayEmpty disabled={entradaActiva?.estado === 'activo'}
+                            sx={{ bgcolor: 'background.default' }}
                         >
-                            <MenuItem value="" disabled>
-                                <em>Seleccionar tarea...</em>
-                            </MenuItem>
+                            <MenuItem value="" disabled><em>Seleccionar tarea...</em></MenuItem>
                             {tareasDisponibles.map((tarea) => (
                                 <MenuItem key={tarea._id} value={tarea._id}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: tarea.color }} />
-                                        <Typography variant="body1">{tarea.nombre}</Typography>
+                                        <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: tarea.color }} />
+                                        <Typography variant="body2">{tarea.nombre}</Typography>
                                     </Box>
                                 </MenuItem>
                             ))}
                         </Select>
                     </FormControl>
-                    {
-                        user && user.esLider && (
-                            <Button
-                                variant="outlined"
-                                startIcon={<Add />}
-                                onClick={() => setDialogTarea(true)}
-                                sx={{ textTransform: 'none', minWidth: 140 }}
-                            >
-                                Nueva tarea
-                            </Button>
-                        )
-                    }
-                    {
-                        user && user.esLider && (
-                            <Button
-                                variant="outlined"
-                                startIcon={<Settings />}
-                                onClick={() => setDialogGestionTareas(true)}
-                                sx={{ textTransform: 'none', minWidth: 140 }}
-                            >
-                                Gestionar tareas
-                            </Button>
-                        )
-                    }
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 'auto' }}>
-                        <Typography variant="h5" fontFamily="monospace" fontWeight="700" sx={{ minWidth: 100, textAlign: 'center' }}>
-                            {formatearTiempo(tiempoActual)}
-                        </Typography>
+
+                    {user?.esLider && (
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Tooltip title="Nueva tarea">
+                                <Button variant="outlined" size="small" onClick={() => setDialogTarea(true)}
+                                    sx={{ minWidth: 'auto', px: 1 }}>
+                                    <Add fontSize="small" />
+                                </Button>
+                            </Tooltip>
+                            <Tooltip title="Gestionar tareas">
+                                <Button variant="outlined" size="small" onClick={() => setDialogGestionTareas(true)}
+                                    sx={{ minWidth: 'auto', px: 1 }}>
+                                    <Settings fontSize="small" />
+                                </Button>
+                            </Tooltip>
+                        </Box>
+                    )}
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, ml: 'auto' }}>
+                        <Box sx={{
+                            px: 2, py: 0.75, borderRadius: 1,
+                            bgcolor: entradaActiva?.estado === 'activo' ? '#DEEBFF' : 'background.default',
+                            border: '1px solid',
+                            borderColor: entradaActiva?.estado === 'activo' ? '#4C9AFF' : 'divider',
+                        }}>
+                            <Typography variant="h5" fontFamily="'SF Mono', 'Fira Code', monospace" fontWeight="700"
+                                sx={{ minWidth: 90, textAlign: 'center', color: entradaActiva?.estado === 'activo' ? '#0052CC' : 'text.primary' }}>
+                                {formatearTiempo(tiempoActual)}
+                            </Typography>
+                        </Box>
+
                         {entradaActiva?.estado === 'activo' ? (
                             <>
                                 {nuevaDescripcion.trim() && (
-                                    <Button
-                                        variant="outlined"
-                                        onClick={agregarDescripcion}
-                                        sx={{
-                                            minWidth: 110,
-                                            textTransform: 'none',
-                                        }}
-                                        startIcon={<Send />}
-                                    >
-                                        Agregar nota
-                                    </Button>
+                                    <Tooltip title="Agregar nota">
+                                        <Button variant="outlined" onClick={agregarDescripcion} size="small"
+                                            sx={{ minWidth: 'auto', px: 1.5 }}>
+                                            <Send fontSize="small" />
+                                        </Button>
+                                    </Tooltip>
                                 )}
-                                <Button
-                                    variant="contained"
-                                    onClick={() => pausarTimer(user)}
-                                    sx={{
-                                        bgcolor: '#FF9800',
-                                        minWidth: 110,
-                                        textTransform: 'none',
-                                        boxShadow: 'none',
-                                        '&:hover': { bgcolor: '#F57C00', boxShadow: 'none' }
-                                    }}
-                                    startIcon={<Pause />}
-                                >
+                                <Button variant="contained" onClick={() => pausarTimer(user)}
+                                    sx={{ bgcolor: '#FF991F', '&:hover': { bgcolor: '#FF8B00' } }}
+                                    startIcon={<Pause />}>
                                     Pausar
                                 </Button>
-                                <Button
-                                    variant="contained"
-                                    onClick={() => completarTimer(entradaActiva._id)}
-                                    sx={{
-                                        bgcolor: '#f44336',
-                                        minWidth: 110,
-                                        textTransform: 'none',
-                                        boxShadow: 'none',
-                                        '&:hover': { bgcolor: '#d32f2f', boxShadow: 'none' }
-                                    }}
-                                    startIcon={<Stop />}
-                                >
+                                <Button variant="contained" onClick={() => completarTimer(entradaActiva._id)}
+                                    sx={{ bgcolor: '#DE350B', '&:hover': { bgcolor: '#BF2600' } }}
+                                    startIcon={<Stop />}>
                                     Detener
                                 </Button>
                             </>
                         ) : (
-                            <Button
-                                variant="contained"
-                                onClick={iniciarTimer}
-                                disabled={!tareaSeleccionada}
-                                sx={{
-                                    bgcolor: '#03a9f4',
-                                    minWidth: 120,
-                                    textTransform: 'none',
-                                    boxShadow: 'none',
-                                    fontSize: '1rem',
-                                    '&:hover': { bgcolor: '#0288d1', boxShadow: 'none' }
-                                }}
-                                startIcon={<PlayArrow />}
-                            >
-                                {historial.find(e => e.taskId === tareaSeleccionada && e.estado === 'pausado')
-                                    ? 'Reanudar'
-                                    : 'Iniciar'}
+                            <Button variant="contained" onClick={iniciarTimer} disabled={!tareaSeleccionada}
+                                startIcon={<PlayArrow />}>
+                                {historial.find(e => e.taskId === tareaSeleccionada && e.estado === 'pausado') ? 'Reanudar' : 'Iniciar'}
                             </Button>
                         )}
                     </Box>
                 </Box>
 
-                {/* Mostrar descripciones de la entrada activa */}
-                {entradaActiva && entradaActiva.descripciones && entradaActiva.descripciones.length > 0 && (
-                    <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                            Notas de esta sesión:
+                {/* Active session notes */}
+                {entradaActiva?.descripciones?.length > 0 && (
+                    <Box sx={{ mt: 2, p: 1.5, bgcolor: '#DEEBFF', borderRadius: 1, border: '1px solid #B3D4FF' }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1, color: '#0747A6' }}>
+                            NOTAS DE SESIÓN
                         </Typography>
                         {entradaActiva.descripciones.map((desc, idx) => (
-                            <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
-                                <Typography variant="caption" color="primary" sx={{ minWidth: 45, fontWeight: 600 }}>
+                            <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 0.75 }}>
+                                <Typography variant="caption" sx={{ minWidth: 42, fontWeight: 700, color: '#0052CC' }}>
                                     {formatearHora(desc.timestamp)}
                                 </Typography>
-                                <Typography variant="body2" sx={{ flex: 1 }}>
-                                    {desc.texto}
-                                </Typography>
-                                <IconButton
-                                    size="small"
-                                    onClick={() => eliminarDescripcion(entradaActiva._id, idx)}
-                                    sx={{ color: 'text.secondary', p: 0.5 }}
-                                >
-                                    <Delete fontSize="small" />
+                                <Typography variant="body2" sx={{ flex: 1, color: '#172B4D' }}>{desc.texto}</Typography>
+                                <IconButton size="small" onClick={() => eliminarDescripcion(entradaActiva._id, idx)}
+                                    sx={{ p: 0.25, color: '#626F86' }}>
+                                    <Delete sx={{ fontSize: 14 }} />
                                 </IconButton>
                             </Box>
                         ))}
@@ -648,250 +459,219 @@ export const TimerPage = () => {
                 )}
             </Paper>
 
-            <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-                <Paper elevation={0} sx={{ p: 2, flex: 1, minWidth: 150, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                    <Typography variant="caption" color="text.secondary" gutterBottom display="block">TIEMPO HOY</Typography>
-                    <Typography variant="h5" fontWeight="700" fontFamily="monospace">
-                        {formatearTiempo(calcularTiempoHoy())}
-                    </Typography>
-                </Paper>
-                <Paper elevation={0} sx={{ p: 2, flex: 1, minWidth: 150, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                    <Typography variant="caption" color="text.secondary" gutterBottom display="block">ENTRADAS</Typography>
-                    <Typography variant="h5" fontWeight="700">{historial.length}</Typography>
-                </Paper>
-
-                <Paper elevation={0} sx={{ p: 2, flex: 1, minWidth: 150, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                    <Typography variant="caption" color="text.secondary" gutterBottom display="block">TAREAS DISPONIBLES</Typography>
-                    <Typography variant="h5" fontWeight="700">{tareasDisponibles.length}</Typography>
-                </Paper>
+            {/* Stats row */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 2.5 }}>
+                {[
+                    { label: 'TIEMPO HOY', value: formatearTiempo(calcularTiempoHoy()), mono: true, accent: '#0052CC' },
+                    { label: 'ENTRADAS', value: historial.length, accent: '#36B37E' },
+                    { label: 'TAREAS', value: tareasDisponibles.length, accent: '#6554C0' },
+                ].map((stat) => (
+                    <Paper key={stat.label} sx={{ p: 2, flex: 1, minWidth: 140 }}>
+                        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>{stat.label}</Typography>
+                        <Typography variant="h5" fontWeight="700"
+                            sx={{ fontFamily: stat.mono ? "'SF Mono', 'Fira Code', monospace" : 'inherit', color: stat.accent }}>
+                            {stat.value}
+                        </Typography>
+                    </Paper>
+                ))}
             </Box>
 
-            <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-                <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="subtitle1" fontWeight="600">Entradas de tiempo - {fechaHoy}</Typography>
+            {/* Entries table */}
+            <Paper sx={{ overflow: 'hidden' }}>
+                <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography variant="body1" fontWeight={600}>Entradas de hoy</Typography>
+                    <Typography variant="caption" color="text.secondary">{fechaHoy}</Typography>
                 </Box>
 
                 {historial.length === 0 ? (
-                    <Box sx={{ p: 4, textAlign: 'center' }}>
-                        <History sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
-                        <Typography variant="body2" color="text.secondary">No hay entradas de tiempo registradas hoy</Typography>
-                        <Typography variant="caption" color="text.secondary">Selecciona una tarea e inicia el timer</Typography>
+                    <Box sx={{ p: 5, textAlign: 'center' }}>
+                        <History sx={{ fontSize: 40, color: 'text.disabled', mb: 1.5 }} />
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                            Sin entradas registradas
+                        </Typography>
+                        <Typography variant="caption" color="text.disabled">
+                            Selecciona una tarea e inicia el timer
+                        </Typography>
                     </Box>
                 ) : (
                     <TableContainer>
                         <Table>
                             <TableHead>
-                                <TableRow sx={{ bgcolor: 'action.hover' }}>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>TAREA</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>ESTADO</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>SESIONES</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>NOTAS</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary' }}>DURACIÓN</TableCell>
-                                    <TableCell></TableCell>
+                                <TableRow>
+                                    <TableCell>TAREA</TableCell>
+                                    <TableCell>ESTADO</TableCell>
+                                    <TableCell>SESIONES</TableCell>
+                                    <TableCell>NOTAS</TableCell>
+                                    <TableCell align="right">DURACIÓN</TableCell>
+                                    <TableCell width={48}></TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {historial.map((entrada) => (
-                                    <React.Fragment key={entrada._id}>
-                                        <TableRow hover>
-                                            <TableCell>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: entrada.color }} />
-                                                    <Typography variant="body2" fontWeight={500}>{entrada.tarea}</Typography>
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <Chip
-                                                        label={entrada.estado}
-                                                        size="small"
-                                                        color={entrada.estado === 'activo' ? 'success' : entrada.estado === 'pausado' ? 'warning' : 'default'}
-                                                    />
-                                                    {entrada.estado === 'pausado' && (
-                                                        <>
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => reanudarEntrada(entrada._id)}
-                                                                sx={{ color: '#03a9f4' }}
-                                                            >
-                                                                <PlayArrow fontSize="small" />
-                                                            </IconButton>
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => completarTimer(entrada._id)}
-                                                                sx={{ color: '#f44336' }}
-                                                            >
-                                                                <Stop fontSize="small" />
-                                                            </IconButton>
-                                                        </>
-                                                    )}
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Typography variant="body2">{entrada.segmentos.length}</Typography>
-                                            </TableCell>
-                                            <TableCell>
-                                                {entrada.descripciones && entrada.descripciones.length > 0 ? (
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => toggleExpandEntry(entrada._id)}
-                                                    >
-                                                        <DescriptionIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                                        <Typography variant="caption">
-                                                            {entrada.descripciones.length}
-                                                        </Typography>
-                                                        {expandedEntries[entrada._id] ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
-                                                    </IconButton>
-                                                ) : (
-                                                    <Typography variant="caption" color="text.secondary">-</Typography>
-                                                )}
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
-                                                    {formatearTiempo(entrada.duracionTotal)}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <IconButton size="small" onClick={(e) => handleMenuClick(e, entrada)}>
-                                                    <MoreVert fontSize="small" />
-                                                </IconButton>
-                                            </TableCell>
-                                        </TableRow>
-                                        {entrada.descripciones && entrada.descripciones.length > 0 && (
+                                {historial.map((entrada) => {
+                                    const statusProps = getStatusProps(entrada.estado);
+                                    return (
+                                        <React.Fragment key={entrada._id}>
                                             <TableRow>
-                                                <TableCell colSpan={6} sx={{ py: 0, px: 0, borderBottom: expandedEntries[entrada._id] ? '1px solid' : 'none', borderColor: 'divider' }}>
-                                                    <Collapse in={expandedEntries[entrada._id]} timeout="auto" unmountOnExit>
-                                                        <Box sx={{ p: 2, bgcolor: 'action.hover' }}>
-                                                            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block', fontWeight: 600 }}>
-                                                                Historial de notas:
-                                                            </Typography>
-                                                            {entrada.descripciones.map((desc, idx) => (
-                                                                <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
-                                                                    <Typography variant="caption" color="primary" sx={{ minWidth: 45, fontWeight: 600 }}>
-                                                                        {formatearHora(desc.timestamp)}
-                                                                    </Typography>
-                                                                    <Typography variant="body2" sx={{ flex: 1 }}>
-                                                                        {desc.texto}
-                                                                    </Typography>
-                                                                    {entrada.estado !== 'completado' && (
-                                                                        <IconButton
-                                                                            size="small"
-                                                                            onClick={() => eliminarDescripcion(entrada._id, idx)}
-                                                                            sx={{ color: 'text.secondary', p: 0.5 }}
-                                                                        >
-                                                                            <Delete fontSize="small" />
-                                                                        </IconButton>
-                                                                    )}
-                                                                </Box>
-                                                            ))}
-                                                        </Box>
-                                                    </Collapse>
+                                                <TableCell>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: entrada.color, flexShrink: 0 }} />
+                                                        <Typography variant="body2" fontWeight={500}>{entrada.tarea}</Typography>
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                        <Chip size="small" label={statusProps.label} sx={statusProps.sx} />
+                                                        {entrada.estado === 'pausado' && (
+                                                            <>
+                                                                <Tooltip title="Reanudar">
+                                                                    <IconButton size="small" onClick={() => reanudarEntrada(entrada._id)}
+                                                                        sx={{ color: '#0052CC' }}>
+                                                                        <PlayArrow sx={{ fontSize: 16 }} />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                                <Tooltip title="Completar">
+                                                                    <IconButton size="small" onClick={() => completarTimer(entrada._id)}
+                                                                        sx={{ color: '#DE350B' }}>
+                                                                        <Stop sx={{ fontSize: 16 }} />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                            </>
+                                                        )}
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2">{entrada.segmentos.length}</Typography>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {entrada.descripciones?.length > 0 ? (
+                                                        <Button size="small" onClick={() => toggleExpandEntry(entrada._id)}
+                                                            sx={{ minWidth: 'auto', color: 'text.secondary', fontSize: '0.75rem' }}
+                                                            endIcon={expandedEntries[entrada._id] ? <ExpandLess sx={{ fontSize: '14px !important' }} /> : <ExpandMore sx={{ fontSize: '14px !important' }} />}>
+                                                            <DescriptionIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                                                            {entrada.descripciones.length}
+                                                        </Button>
+                                                    ) : (
+                                                        <Typography variant="body2" color="text.disabled">—</Typography>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell align="right">
+                                                    <Typography variant="body2" fontFamily="'SF Mono', 'Fira Code', monospace" fontWeight={600}>
+                                                        {formatearTiempo(entrada.duracionTotal)}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <IconButton size="small" onClick={(e) => handleMenuClick(e, entrada)}>
+                                                        <MoreVert sx={{ fontSize: 16 }} />
+                                                    </IconButton>
                                                 </TableCell>
                                             </TableRow>
-                                        )}
-                                    </React.Fragment>
-                                ))}
+                                            {entrada.descripciones?.length > 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={6} sx={{ py: 0, px: 0, borderBottom: expandedEntries[entrada._id] ? undefined : 'none' }}>
+                                                        <Collapse in={expandedEntries[entrada._id]} timeout="auto" unmountOnExit>
+                                                            <Box sx={{ p: 2, bgcolor: 'action.hover' }}>
+                                                                <Typography variant="subtitle2" sx={{ mb: 1 }}>NOTAS</Typography>
+                                                                {entrada.descripciones.map((desc, idx) => (
+                                                                    <Box key={idx} sx={{
+                                                                        display: 'flex', alignItems: 'flex-start', gap: 1, mb: 0.75,
+                                                                        p: 1, bgcolor: 'background.paper', borderRadius: 1,
+                                                                        border: '1px solid', borderColor: 'divider',
+                                                                    }}>
+                                                                        <Typography variant="caption" sx={{ minWidth: 42, fontWeight: 700, color: 'primary.main' }}>
+                                                                            {formatearHora(desc.timestamp)}
+                                                                        </Typography>
+                                                                        <Typography variant="body2" sx={{ flex: 1 }}>{desc.texto}</Typography>
+                                                                        {entrada.estado !== 'completado' && (
+                                                                            <IconButton size="small" onClick={() => eliminarDescripcion(entrada._id, idx)}
+                                                                                sx={{ p: 0.25, color: 'text.secondary' }}>
+                                                                                <Delete sx={{ fontSize: 14 }} />
+                                                                            </IconButton>
+                                                                        )}
+                                                                    </Box>
+                                                                ))}
+                                                            </Box>
+                                                        </Collapse>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </TableContainer>
                 )}
             </Paper>
 
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-                <MenuItemComponent onClick={eliminarEntrada}>
-                    <Delete fontSize="small" sx={{ mr: 1 }} />
-                    Eliminar
+            {/* Context menu */}
+            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}
+                PaperProps={{ sx: { minWidth: 160, borderRadius: 1 } }}>
+                <MenuItemComponent onClick={eliminarEntrada} sx={{ color: 'error.main', fontSize: '0.875rem' }}>
+                    <Delete fontSize="small" sx={{ mr: 1 }} /> Eliminar
                 </MenuItemComponent>
             </Menu>
 
+            {/* Create task dialog */}
             <Dialog open={dialogTarea} onClose={() => setDialogTarea(false)} maxWidth="xs" fullWidth>
-                <DialogTitle>Crear nueva tarea</DialogTitle>
+                <DialogTitle>Crear tarea</DialogTitle>
                 <DialogContent>
-                    <TextField
-                        fullWidth
-                        label="Nombre de la tarea"
-                        value={nuevaTarea.nombre}
+                    <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5, color: '#626F86' }}>NOMBRE</Typography>
+                    <TextField fullWidth value={nuevaTarea.nombre} placeholder="Nombre de la tarea"
                         onChange={(e) => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })}
-                        sx={{ mt: 2, mb: 2 }}
-                        autoFocus
-                    />
-                    <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary">Color de la tarea</Typography>
+                        sx={{ mb: 2 }} autoFocus />
+                    <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#626F86' }}>COLOR</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+                        {['#0052CC', '#00B8D9', '#36B37E', '#FF991F', '#FF5630', '#6554C0', '#8993A4', '#172B4D'].map(c => (
+                            <Box key={c} onClick={() => setNuevaTarea({ ...nuevaTarea, color: c })}
+                                sx={{
+                                    width: 32, height: 32, borderRadius: 1, bgcolor: c, cursor: 'pointer',
+                                    border: nuevaTarea.color === c ? '2px solid #0052CC' : '2px solid transparent',
+                                    outline: nuevaTarea.color === c ? '2px solid #B3D4FF' : 'none',
+                                    transition: 'all 0.1s',
+                                }} />
+                        ))}
                     </Box>
-                    <TextField
-                        fullWidth
-                        type="color"
-                        value={nuevaTarea.color}
-                        onChange={(e) => setNuevaTarea({ ...nuevaTarea, color: e.target.value })}
-                    />
                     <FormControlLabel
-                        control={
-                            <Checkbox
-                                checked={nuevaTarea.withPause || false}
-                                onChange={(e) =>
-                                    setNuevaTarea({ ...nuevaTarea, withPause: e.target.checked })
-                                }
-                            />
-                        }
-                        label="No pausar automáticamente"
-                        sx={{ mt: 2 }}
+                        control={<Checkbox checked={nuevaTarea.withPause || false}
+                            onChange={(e) => setNuevaTarea({ ...nuevaTarea, withPause: e.target.checked })} />}
+                        label={<Typography variant="body2">No pausar automáticamente</Typography>}
                     />
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDialogTarea(false)}>Cancelar</Button>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={() => setDialogTarea(false)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
                     <Button onClick={crearTarea} variant="contained">Crear</Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog
-                open={dialogGestionTareas}
-                onClose={() => setDialogGestionTareas(false)}
-                maxWidth="sm"
-                fullWidth
-            >
+            {/* Manage tasks dialog */}
+            <Dialog open={dialogGestionTareas} onClose={() => setDialogGestionTareas(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Typography variant="h6">Gestionar Tareas</Typography>
-                        <IconButton onClick={() => setDialogGestionTareas(false)} size="small">
-                            <Close />
-                        </IconButton>
+                        <Typography variant="h6">Gestionar tareas</Typography>
+                        <IconButton onClick={() => setDialogGestionTareas(false)} size="small"><Close fontSize="small" /></IconButton>
                     </Box>
                 </DialogTitle>
                 <DialogContent>
                     {tareasDisponibles.length === 0 ? (
                         <Box sx={{ py: 4, textAlign: 'center' }}>
-                            <Typography variant="body2" color="text.secondary">
-                                No tienes tareas creadas
-                            </Typography>
+                            <Typography variant="body2" color="text.secondary">No hay tareas creadas</Typography>
                         </Box>
                     ) : (
-                        <List>
+                        <List disablePadding>
                             {tareasDisponibles.map((tarea, index) => (
                                 <React.Fragment key={tarea._id}>
-                                    <ListItem
-                                        secondaryAction={
-                                            <IconButton
-                                                edge="end"
-                                                onClick={() => eliminarTarea(tarea._id)}
-                                                sx={{ color: '#f44336' }}
-                                            >
-                                                <Delete />
+                                    <ListItem secondaryAction={
+                                        <Tooltip title="Eliminar">
+                                            <IconButton edge="end" onClick={() => eliminarTarea(tarea._id)} sx={{ color: '#DE350B' }}>
+                                                <Delete fontSize="small" />
                                             </IconButton>
-                                        }
-                                    >
-                                        <Box
-                                            sx={{
-                                                width: 16,
-                                                height: 16,
-                                                borderRadius: '50%',
-                                                bgcolor: tarea.color,
-                                                mr: 2
-                                            }}
-                                        />
-                                        <ListItemText
-                                            primary={tarea.nombre}
+                                        </Tooltip>
+                                    }>
+                                        <Box sx={{ width: 14, height: 14, borderRadius: 1, bgcolor: tarea.color, mr: 2, flexShrink: 0 }} />
+                                        <ListItemText primary={tarea.nombre}
                                             secondary={`Creada el ${new Date(tarea.createdAt).toLocaleDateString('es-ES')}`}
-                                        />
+                                            primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
+                                            secondaryTypographyProps={{ fontSize: '0.75rem' }} />
                                     </ListItem>
                                     {index < tareasDisponibles.length - 1 && <Divider />}
                                 </React.Fragment>
@@ -899,9 +679,6 @@ export const TimerPage = () => {
                         </List>
                     )}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDialogGestionTareas(false)}>Cerrar</Button>
-                </DialogActions>
             </Dialog>
         </>
     );

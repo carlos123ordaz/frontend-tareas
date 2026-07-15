@@ -58,8 +58,8 @@ fn set_mini_mode(app: AppHandle, state: State<MiniModeState>, enabled: bool) -> 
         window.set_always_on_top(true).map_err(|e| e.to_string())?;
         window
             .set_size(tauri::Size::Physical(PhysicalSize {
-                width: 420,
-                height: 220,
+                width: 240,
+                height: 150,
             }))
             .map_err(|e| e.to_string())?;
         window.show().map_err(|e| e.to_string())?;

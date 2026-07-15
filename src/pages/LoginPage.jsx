@@ -5,14 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import userService from '../api/UserService';
 
-
 export const LoginPage = () => {
     const navigate = useNavigate();
     const { handleSubmit, control, watch, formState: { errors } } = useForm({
-        defaultValues: {
-            username: '',
-            password: ''
-        }
+        defaultValues: { username: '', password: '' }
     });
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
@@ -24,13 +20,11 @@ export const LoginPage = () => {
     const onSubmit = async (data) => {
         setLoading(true);
         setError('');
-
         try {
             const response = await userService.login({
                 username: data.username,
                 password: data.password
             });
-
             localStorage.setItem('user', JSON.stringify(response));
             navigate('/');
         } catch (err) {
@@ -42,180 +36,137 @@ export const LoginPage = () => {
     };
 
     const handleKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            handleSubmit(onSubmit)();
-        }
+        if (e.key === 'Enter') handleSubmit(onSubmit)();
     };
 
     return (
-        <Box
-            sx={{
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: '#f5f7fa',
-                p: 2,
-            }}
-        >
-            <Paper
-                elevation={0}
-                sx={{
-                    p: 4,
-                    maxWidth: 400,
-                    width: '100%',
-                    borderRadius: 2,
-                    border: '1px solid #e0e0e0',
-                    textAlign: 'center',
-                }}
-            >
-                <Box
-                    sx={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: '50%',
-                        bgcolor: '#03a9f4',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 24px',
-                    }}
-                >
-                    <Timer sx={{ fontSize: 32, color: 'white' }} />
+        <Box sx={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#FAFBFC',
+            p: 2,
+        }}>
+            <Box sx={{ width: '100%', maxWidth: 400 }}>
+                {/* Brand */}
+                <Box sx={{ textAlign: 'center', mb: 4 }}>
+                    <Box sx={{
+                        width: 48, height: 48, borderRadius: '12px',
+                        background: 'linear-gradient(135deg, #0052CC 0%, #4C9AFF 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 16px',
+                    }}>
+                        <Timer sx={{ fontSize: 28, color: '#fff' }} />
+                    </Box>
+                    <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: '#172B4D', mb: 0.5 }}>
+                        TimeTracker
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#626F86' }}>
+                        Inicia sesión para continuar
+                    </Typography>
                 </Box>
 
-                <Typography variant="h5" fontWeight="700" gutterBottom color="#03a9f4">
-                    TimeTracker
-                </Typography>
+                <Paper sx={{ p: 4 }}>
+                    {error && (
+                        <Alert
+                            severity="error"
+                            sx={{
+                                mb: 2.5, borderRadius: 1,
+                                bgcolor: '#FFEBE6', color: '#BF2600',
+                                '& .MuiAlert-icon': { color: '#DE350B' },
+                            }}
+                        >
+                            {error}
+                        </Alert>
+                    )}
 
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Sistema de control de tiempo laboral
-                </Typography>
+                    <form onSubmit={handleSubmit(onSubmit)}>
+                        <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#626F86' }}>
+                            INICIALES
+                        </Typography>
+                        <Controller
+                            name="username"
+                            control={control}
+                            rules={{
+                                required: 'Las iniciales son requeridas',
+                                minLength: { value: 2, message: 'Mínimo 2 caracteres' },
+                                maxLength: { value: 4, message: 'Máximo 4 caracteres' }
+                            }}
+                            render={({ field }) => (
+                                <TextField
+                                    {...field}
+                                    fullWidth
+                                    placeholder="Ej: FG"
+                                    onChange={(e) => {
+                                        field.onChange(e.target.value.toUpperCase());
+                                        setError('');
+                                    }}
+                                    onKeyPress={handleKeyPress}
+                                    error={!!errors.username}
+                                    helperText={errors.username?.message}
+                                    inputProps={{ maxLength: 4 }}
+                                    sx={{ mb: 2.5 }}
+                                    autoFocus
+                                />
+                            )}
+                        />
 
-                {error && (
-                    <Alert severity="error" sx={{ mb: 2 }}>
-                        {error}
-                    </Alert>
-                )}
+                        <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#626F86' }}>
+                            CONTRASEÑA
+                        </Typography>
+                        <Controller
+                            name="password"
+                            control={control}
+                            rules={{ required: 'La contraseña es requerida' }}
+                            render={({ field }) => (
+                                <TextField
+                                    {...field}
+                                    fullWidth
+                                    type={showPassword ? 'text' : 'password'}
+                                    placeholder="Ingresa tu contraseña"
+                                    error={!!errors.password}
+                                    helperText={errors.password?.message}
+                                    onKeyPress={handleKeyPress}
+                                    onChange={(e) => { field.onChange(e); setError(''); }}
+                                    sx={{ mb: 3 }}
+                                    slotProps={{
+                                        input: {
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" size="small">
+                                                        {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ),
+                                        }
+                                    }}
+                                />
+                            )}
+                        />
 
-                <form onSubmit={handleSubmit(onSubmit)}>
-                    <Controller
-                        name="username"
-                        control={control}
-                        rules={{
-                            required: 'Las iniciales son requeridas',
-                            minLength: {
-                                value: 2,
-                                message: 'Las iniciales deben tener al menos 2 caracteres'
-                            },
-                            maxLength: {
-                                value: 4,
-                                message: 'Las iniciales no pueden tener más de 4 caracteres'
-                            }
-                        }}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                fullWidth
-                                label="Iniciales del usuario"
-                                variant="outlined"
-                                placeholder="Ej: FG"
-                                onChange={(e) => {
-                                    const value = e.target.value.toUpperCase();
-                                    field.onChange(value);
-                                    setError('');
-                                }}
-                                onKeyPress={handleKeyPress}
-                                helperText={
-                                    errors.username?.message ||
-                                    (username.length === 0
-                                        ? "Ingrese al menos 2 caracteres"
-                                        : username.length === 1
-                                            ? "Falta 1 carácter más"
-                                            : "✓ Iniciales válidas")
-                                }
-                                error={!!errors.username || username.length === 1}
-                                inputProps={{ maxLength: 4 }}
-                                sx={{ mb: 2 }}
-                                autoFocus
-                            />
-                        )}
-                    />
+                        <Button
+                            fullWidth
+                            type="submit"
+                            variant="contained"
+                            disabled={username.length < 2 || !password || loading}
+                            sx={{ py: 1, fontSize: '0.875rem', fontWeight: 600, mb: 2 }}
+                        >
+                            {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+                        </Button>
+                    </form>
 
-                    <Controller
-                        name="password"
-                        control={control}
-                        rules={{
-                            required: 'La contraseña es requerida'
-                        }}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                fullWidth
-                                label="Contraseña"
-                                type={showPassword ? 'text' : 'password'}
-                                variant="outlined"
-                                placeholder="Ingresa tu contraseña"
-                                error={!!errors.password}
-                                helperText={errors.password?.message}
-                                onKeyPress={handleKeyPress}
-                                onChange={(e) => {
-                                    field.onChange(e);
-                                    setError('');
-                                }}
-                                sx={{ mb: 3 }}
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                edge="end"
-                                            >
-                                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                            />
-                        )}
-                    />
-
-                    <Button
-                        fullWidth
-                        type="submit"
-                        variant="contained"
-                        size="large"
-                        disabled={username.length < 2 || !password || loading}
-                        sx={{
-                            py: 1.5,
-                            bgcolor: '#03a9f4',
-                            textTransform: 'none',
-                            fontSize: '1rem',
-                            fontWeight: 600,
-                            boxShadow: 'none',
-                            '&:hover': {
-                                bgcolor: '#0288d1',
-                                boxShadow: 'none',
-                            },
-                            mb: 2
-                        }}
-                    >
-                        {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-                    </Button>
-                </form>
-
-                <Button
-                    fullWidth
-                    variant="text"
-                    onClick={() => navigate('/register')}
-                    sx={{
-                        textTransform: 'none',
-                        color: '#03a9f4',
-                    }}
-                >
-                    ¿No tienes cuenta? Regístrate
-                </Button>
-            </Paper>
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Button
+                            variant="text"
+                            onClick={() => navigate('/register')}
+                            sx={{ color: 'primary.main', fontSize: '0.8125rem' }}
+                        >
+                            ¿No tienes cuenta? Regístrate
+                        </Button>
+                    </Box>
+                </Paper>
+            </Box>
         </Box>
     );
 };

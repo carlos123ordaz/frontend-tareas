@@ -1,31 +1,12 @@
 import { useState, useEffect, useContext } from 'react';
 import {
-    Box,
-    Paper,
-    Typography,
-    Button,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    FormControl,
-    FormLabel,
-    RadioGroup,
-    FormControlLabel,
-    Radio,
-    Grid,
-    Card,
-    CardContent,
-    Divider,
-    Alert,
+    Box, Paper, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
+    FormControl, FormLabel, RadioGroup, FormControlLabel, Radio,
+    Grid, Divider, Alert,
 } from '@mui/material';
-import {
-    Download,
-    InsertDriveFile,
-    DateRange,
-    Assessment,
-} from '@mui/icons-material';
+import { Download, InsertDriveFile, DateRange, Assessment } from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 import { CONFIG } from '../config';
 import { AuthContext } from '../contexts/AuthContext';
 
@@ -38,392 +19,189 @@ export const ReportPage = () => {
     });
     const [entradas, setEntradas] = useState([]);
     const { user } = useContext(AuthContext);
-    const [estadisticas, setEstadisticas] = useState({
-        totalEntradas: 0,
-        totalSegundos: 0,
-        totalTareas: 0,
-        fechaInicio: null,
-        fechaFin: null
-    });
+    const [estadisticas, setEstadisticas] = useState({ totalEntradas: 0, totalSegundos: 0, totalTareas: 0 });
 
-    useEffect(() => {
-        if (dialogExportar) {
-            cargarDatosParaExportar();
-        }
-    }, [dialogExportar, tipoExportacion, rangoFechas]);
+    useEffect(() => { if (dialogExportar) cargarDatosParaExportar(); }, [dialogExportar, tipoExportacion, rangoFechas]);
 
     const cargarDatosParaExportar = async () => {
         try {
-            let url;
             let fechaInicio, fechaFin;
-
             if (tipoExportacion === 'todo') {
-                const hoy = new Date().toISOString().split('T')[0];
-                const hace1Año = new Date();
-                hace1Año.setFullYear(hace1Año.getFullYear() - 1);
+                const hace1Año = new Date(); hace1Año.setFullYear(hace1Año.getFullYear() - 1);
                 fechaInicio = hace1Año.toISOString().split('T')[0];
-                fechaFin = hoy;
-            } else {
-                fechaInicio = rangoFechas.inicio;
-                fechaFin = rangoFechas.fin;
-            }
+                fechaFin = new Date().toISOString().split('T')[0];
+            } else { fechaInicio = rangoFechas.inicio; fechaFin = rangoFechas.fin; }
 
-            url = `${CONFIG.uri}/entries/user/${user._id}/range/${fechaInicio}/${fechaFin}`;
-
-            const response = await fetch(url);
+            const response = await fetch(`${CONFIG.uri}/entries/user/${user._id}/range/${fechaInicio}/${fechaFin}`);
             if (response.ok) {
                 const data = await response.json();
                 setEntradas(data);
-
                 const tareasUnicas = new Set();
                 let totalSegundos = 0;
-
-                data.forEach(entrada => {
-                    tareasUnicas.add(entrada.taskId);
-                    totalSegundos += entrada.duracionTotal;
-                });
-
-                setEstadisticas({
-                    totalEntradas: data.length,
-                    totalSegundos,
-                    totalTareas: tareasUnicas.size,
-                    fechaInicio,
-                    fechaFin
-                });
+                data.forEach(e => { tareasUnicas.add(e.taskId); totalSegundos += e.duracionTotal; });
+                setEstadisticas({ totalEntradas: data.length, totalSegundos, totalTareas: tareasUnicas.size });
             }
-        } catch (error) {
-            console.error('Error al cargar datos:', error);
-        }
+        } catch (error) { console.error('Error al cargar datos:', error); }
     };
 
-    const formatearTiempo = (segundos) => {
-        const horas = Math.floor(segundos / 3600);
-        const minutos = Math.floor((segundos % 3600) / 60);
-        const segs = segundos % 60;
-        return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`;
-    };
-
-    const formatearTiempoCorto = (segundos) => {
-        const horas = Math.floor(segundos / 3600);
-        const minutos = Math.floor((segundos % 3600) / 60);
-        if (horas > 0) {
-            return `${horas}h ${minutos}m`;
-        }
-        return `${minutos}m`;
-    };
-
-    const formatearFecha = (isoString) => {
-        const fecha = new Date(isoString);
-        return fecha.toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
-    };
-
-    const formatearHora = (isoString) => {
-        const fecha = new Date(isoString);
-        return fecha.toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-    };
+    const formatearTiempo = (s) => `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    const formatearTiempoCorto = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h ${m}m` : `${m}m`; };
+    const formatearFecha = (iso) => new Date(iso).toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    const formatearHora = (iso) => new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     const exportarCSV = () => {
-        const headers = [
-            'Fecha',
-            'Tarea',
-            'Estado',
-            'Hora Inicio',
-            'Hora Fin',
-            'Duración (HH:MM:SS)',
-            'Duración (Horas)',
-            'Sesiones'
-        ];
-
-        const rows = entradas.map(entrada => {
-            const primeraHora = entrada.segmentos.length > 0
-                ? formatearHora(entrada.segmentos[0].inicio)
-                : '-';
-            const ultimaHora = entrada.segmentos.length > 0 && entrada.segmentos[entrada.segmentos.length - 1].fin
-                ? formatearHora(entrada.segmentos[entrada.segmentos.length - 1].fin)
-                : 'En curso';
-
-            return [
-                formatearFecha(entrada.fecha),
-                `"${entrada.tarea}"`,
-                entrada.estado,
-                primeraHora,
-                ultimaHora,
-                formatearTiempo(entrada.duracionTotal),
-                (entrada.duracionTotal / 3600).toFixed(2),
-                entrada.segmentos.length
-            ];
+        const headers = ['Fecha', 'Tarea', 'Estado', 'Hora Inicio', 'Hora Fin', 'Duración (HH:MM:SS)', 'Duración (Horas)', 'Sesiones'];
+        const rows = entradas.map(e => {
+            const pHora = e.segmentos.length > 0 ? formatearHora(e.segmentos[0].inicio) : '-';
+            const uHora = e.segmentos.length > 0 && e.segmentos[e.segmentos.length - 1].fin ? formatearHora(e.segmentos[e.segmentos.length - 1].fin) : 'En curso';
+            return [formatearFecha(e.fecha), `"${e.tarea}"`, e.estado, pHora, uHora, formatearTiempo(e.duracionTotal), (e.duracionTotal / 3600).toFixed(2), e.segmentos.length];
         });
-
-        const totalHoras = (estadisticas.totalSegundos / 3600).toFixed(2);
         rows.push([]);
-        rows.push(['TOTAL', '', '', '', '', formatearTiempo(estadisticas.totalSegundos), totalHoras, '']);
+        rows.push(['TOTAL', '', '', '', '', formatearTiempo(estadisticas.totalSegundos), (estadisticas.totalSegundos / 3600).toFixed(2), '']);
 
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.join(','))
-        ].join('\n');
-
-        const BOM = '\uFEFF';
-        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-
+        const blob = new Blob(['\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-
-        const nombreArchivo = tipoExportacion === 'todo'
-            ? `reporte_timetracker_${user.username}_completo_${new Date().toISOString().split('T')[0]}.csv`
-            : `reporte_timetracker_${user.username}_${rangoFechas.inicio}_${rangoFechas.fin}.csv`;
-
-        link.setAttribute('href', url);
-        link.setAttribute('download', nombreArchivo);
+        link.setAttribute('href', URL.createObjectURL(blob));
+        link.setAttribute('download', tipoExportacion === 'todo'
+            ? `reporte_${user.username}_completo_${new Date().toISOString().split('T')[0]}.csv`
+            : `reporte_${user.username}_${rangoFechas.inicio}_${rangoFechas.fin}.csv`);
         link.style.visibility = 'hidden';
-
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
         setDialogExportar(false);
     };
 
+    const infoCards = [
+        {
+            icon: <Assessment />, color: '#36B37E', title: 'Datos incluidos',
+            items: ['Fecha de cada entrada', 'Nombre de la tarea', 'Estado', 'Horas de inicio y fin', 'Duración total', 'Número de sesiones']
+        },
+        {
+            icon: <DateRange />, color: '#FF991F', title: 'Opciones',
+            items: ['Todo: historial completo', 'Rango: fechas específicas']
+        },
+        {
+            icon: <InsertDriveFile />, color: '#6554C0', title: 'Formato CSV',
+            items: ['Microsoft Excel', 'Google Sheets', 'LibreOffice Calc']
+        },
+    ];
+
     return (
         <Box>
-            <Typography variant="h5" fontWeight="600" gutterBottom>
-                Reportes
-            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>Reportes</Typography>
 
-            {/* Card principal */}
-            <Paper elevation={0} sx={{ p: 4, border: '1px solid', borderColor: 'divider', borderRadius: 2, textAlign: 'center' }}>
-                <InsertDriveFile sx={{ fontSize: 64, color: '#03a9f4', mb: 2 }} />
-                <Typography variant="h6" fontWeight="600" gutterBottom>
-                    Exportar Reporte de Actividades
+            {/* Main export card */}
+            <Paper sx={{ p: 5, textAlign: 'center', mb: 3 }}>
+                <Box sx={{
+                    width: 56, height: 56, borderRadius: '12px', bgcolor: '#DEEBFF',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 20px',
+                }}>
+                    <Download sx={{ fontSize: 28, color: '#0052CC' }} />
+                </Box>
+                <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+                    Exportar reporte de actividades
                 </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 440, mx: 'auto' }}>
                     Descarga un archivo CSV con el registro detallado de tus actividades.
-                    Podrás elegir exportar todo tu historial o un rango de fechas específico.
+                    Puedes exportar todo tu historial o un rango de fechas específico.
                 </Typography>
-                <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<Download />}
-                    onClick={() => setDialogExportar(true)}
-                    sx={{
-                        bgcolor: '#03a9f4',
-                        textTransform: 'none',
-                        boxShadow: 'none',
-                        px: 4,
-                        py: 1.5,
-                        fontSize: '1rem',
-                        '&:hover': {
-                            bgcolor: '#0288d1',
-                            boxShadow: 'none',
-                        }
-                    }}
-                >
-                    Generar Reporte
+                <Button variant="contained" startIcon={<Download />} onClick={() => setDialogExportar(true)}
+                    sx={{ px: 3 }}>
+                    Generar reporte
                 </Button>
             </Paper>
 
-            {/* Información sobre el CSV */}
-            <Grid container spacing={3} sx={{ mt: 2 }}>
-                <Grid size={{ xs: 12, md: 4 }}>
-                    <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                <Assessment sx={{ color: '#4CAF50' }} />
-                                <Typography variant="h6" fontWeight="600">
-                                    Datos Incluidos
-                                </Typography>
+            {/* Info cards */}
+            <Grid container spacing={2}>
+                {infoCards.map((card) => (
+                    <Grid key={card.title} size={{ xs: 12, md: 4 }}>
+                        <Paper sx={{ p: 2.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                                <Box sx={{ color: card.color, display: 'flex', '& svg': { fontSize: 20 } }}>{card.icon}</Box>
+                                <Typography variant="body1" fontWeight={600}>{card.title}</Typography>
                             </Box>
-                            <Typography variant="body2" color="text.secondary">
-                                • Fecha de cada entrada<br />
-                                • Nombre de la tarea<br />
-                                • Estado (activo/pausado/completado)<br />
-                                • Horas de inicio y fin<br />
-                                • Duración total<br />
-                                • Número de sesiones
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 4 }}>
-                    <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                <DateRange sx={{ color: '#FF9800' }} />
-                                <Typography variant="h6" fontWeight="600">
-                                    Opciones de Exportación
-                                </Typography>
+                            <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                                {card.items.map((item, i) => (
+                                    <Typography key={i} component="li" variant="body2" color="text.secondary" sx={{ mb: 0.25 }}>
+                                        {item}
+                                    </Typography>
+                                ))}
                             </Box>
-                            <Typography variant="body2" color="text.secondary">
-                                • <strong>Todo:</strong> Exporta todas tus entradas históricas<br />
-                                • <strong>Rango:</strong> Selecciona fechas específicas para exportar solo ese período
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 4 }}>
-                    <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                <InsertDriveFile sx={{ color: '#9C27B0' }} />
-                                <Typography variant="h6" fontWeight="600">
-                                    Formato CSV
-                                </Typography>
-                            </Box>
-                            <Typography variant="body2" color="text.secondary">
-                                El archivo descargado es compatible con:<br />
-                                • Microsoft Excel<br />
-                                • Google Sheets<br />
-                                • LibreOffice Calc<br />
-                                • Cualquier editor de hojas de cálculo
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                        </Paper>
+                    </Grid>
+                ))}
             </Grid>
 
-            {/* Dialog de exportación */}
-            <Dialog
-                open={dialogExportar}
-                onClose={() => setDialogExportar(false)}
-                maxWidth="sm"
-                fullWidth
-            >
-                <DialogTitle>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Download />
-                        Exportar Reporte
-                    </Box>
-                </DialogTitle>
+            {/* Export dialog */}
+            <Dialog open={dialogExportar} onClose={() => setDialogExportar(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Exportar reporte</DialogTitle>
                 <DialogContent>
-                    <FormControl component="fieldset" sx={{ mt: 2, mb: 3 }}>
-                        <FormLabel component="legend">Selecciona el período a exportar</FormLabel>
-                        <RadioGroup
-                            value={tipoExportacion}
-                            onChange={(e) => setTipoExportacion(e.target.value)}
-                            sx={{ mt: 1 }}
-                        >
-                            <FormControlLabel
-                                value="todo"
-                                control={<Radio />}
-                                label="Todo el historial"
-                            />
-                            <FormControlLabel
-                                value="rango"
-                                control={<Radio />}
-                                label="Rango de fechas personalizado"
-                            />
+                    <FormControl component="fieldset" sx={{ mt: 1, mb: 2 }}>
+                        <FormLabel component="legend" sx={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#626F86' }}>
+                            Período
+                        </FormLabel>
+                        <RadioGroup value={tipoExportacion} onChange={(e) => setTipoExportacion(e.target.value)} sx={{ mt: 0.5 }}>
+                            <FormControlLabel value="todo" control={<Radio size="small" />}
+                                label={<Typography variant="body2">Todo el historial</Typography>} />
+                            <FormControlLabel value="rango" control={<Radio size="small" />}
+                                label={<Typography variant="body2">Rango personalizado</Typography>} />
                         </RadioGroup>
                     </FormControl>
 
                     {tipoExportacion === 'rango' && (
-                        <Box sx={{ mb: 3 }}>
-                            <TextField
-                                fullWidth
-                                label="Fecha Inicio"
-                                type="date"
-                                value={rangoFechas.inicio}
-                                onChange={(e) => setRangoFechas({ ...rangoFechas, inicio: e.target.value })}
-                                InputLabelProps={{ shrink: true }}
-                                sx={{ mb: 2 }}
-                            />
-                            <TextField
-                                fullWidth
-                                label="Fecha Fin"
-                                type="date"
-                                value={rangoFechas.fin}
-                                onChange={(e) => setRangoFechas({ ...rangoFechas, fin: e.target.value })}
-                                InputLabelProps={{ shrink: true }}
-                            />
+                        <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#626F86' }}>DESDE</Typography>
+                                <DatePicker
+                                    value={dayjs(rangoFechas.inicio)}
+                                    onChange={(val) => val && setRangoFechas({ ...rangoFechas, inicio: val.format('YYYY-MM-DD') })}
+                                    slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                                />
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#626F86' }}>HASTA</Typography>
+                                <DatePicker
+                                    value={dayjs(rangoFechas.fin)}
+                                    onChange={(val) => val && setRangoFechas({ ...rangoFechas, fin: val.format('YYYY-MM-DD') })}
+                                    slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                                />
+                            </Box>
                         </Box>
                     )}
 
                     <Divider sx={{ my: 2 }} />
 
-                    <Typography variant="subtitle2" fontWeight="600" gutterBottom>
-                        Resumen de Exportación
-                    </Typography>
+                    <Typography variant="subtitle2" sx={{ mb: 1.5, color: '#626F86' }}>RESUMEN</Typography>
 
                     {entradas.length === 0 ? (
-                        <Alert severity="warning" sx={{ mt: 2 }}>
-                            No hay datos disponibles para el período seleccionado
+                        <Alert severity="warning" sx={{
+                            bgcolor: '#FFF0B3', color: '#FF8B00', borderRadius: 1,
+                            '& .MuiAlert-icon': { color: '#FF991F' },
+                        }}>
+                            Sin datos para el período seleccionado
                         </Alert>
                     ) : (
-                        <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 1, mt: 2 }}>
-                            <Grid container spacing={2}>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Usuario
-                                    </Typography>
-                                    <Typography variant="body2" fontWeight={600}>
-                                        {user.username}
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Período
-                                    </Typography>
-                                    <Typography variant="body2" fontWeight={600}>
-                                        {tipoExportacion === 'todo'
-                                            ? 'Completo'
-                                            : `${rangoFechas.inicio} - ${rangoFechas.fin}`}
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Entradas
-                                    </Typography>
-                                    <Typography variant="body2" fontWeight={600}>
-                                        {estadisticas.totalEntradas}
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Tareas diferentes
-                                    </Typography>
-                                    <Typography variant="body2" fontWeight={600}>
-                                        {estadisticas.totalTareas}
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 12 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Tiempo total
-                                    </Typography>
-                                    <Typography variant="body2" fontWeight={600}>
-                                        {formatearTiempoCorto(estadisticas.totalSegundos)} ({formatearTiempo(estadisticas.totalSegundos)})
-                                    </Typography>
-                                </Grid>
+                        <Box sx={{ bgcolor: '#F4F5F7', p: 2, borderRadius: 1, border: '1px solid #EBECF0' }}>
+                            <Grid container spacing={1.5}>
+                                {[
+                                    { label: 'Usuario', value: user.username },
+                                    { label: 'Período', value: tipoExportacion === 'todo' ? 'Completo' : `${rangoFechas.inicio} — ${rangoFechas.fin}` },
+                                    { label: 'Entradas', value: estadisticas.totalEntradas },
+                                    { label: 'Tareas', value: estadisticas.totalTareas },
+                                    { label: 'Tiempo total', value: `${formatearTiempoCorto(estadisticas.totalSegundos)} (${formatearTiempo(estadisticas.totalSegundos)})`, full: true },
+                                ].map((item, i) => (
+                                    <Grid key={i} size={{ xs: item.full ? 12 : 6 }}>
+                                        <Typography variant="caption" color="text.secondary">{item.label}</Typography>
+                                        <Typography variant="body2" fontWeight={600}>{item.value}</Typography>
+                                    </Grid>
+                                ))}
                             </Grid>
                         </Box>
                     )}
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setDialogExportar(false)}>
-                        Cancelar
-                    </Button>
-                    <Button
-                        variant="contained"
-                        onClick={exportarCSV}
-                        disabled={entradas.length === 0}
-                        startIcon={<Download />}
-                        sx={{
-                            bgcolor: '#03a9f4',
-                            boxShadow: 'none',
-                            '&:hover': {
-                                bgcolor: '#0288d1',
-                                boxShadow: 'none',
-                            }
-                        }}
-                    >
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={() => setDialogExportar(false)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+                    <Button variant="contained" onClick={exportarCSV} disabled={entradas.length === 0} startIcon={<Download />}>
                         Descargar CSV
                     </Button>
                 </DialogActions>
